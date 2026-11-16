@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.dependencies.auth import get_current_user
 from app.dependencies.get_db import get_db
 from app.models.user import User
-from app.schemas.project import ProjectDetailResponse
-from app.services.project import get_project_detail
+from app.schemas.project import ProjectCreate, ProjectDetailResponse, ProjectResponse
+from app.services.project import create_project, get_project_detail
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -15,6 +15,21 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 @router.get("/sample")
 def read_sample_project() -> dict[str, str]:
     return {"id": "sample-project", "name": "Dự án mẫu"}
+
+
+@router.post(
+    "",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Tạo mới dự án",
+    description="Người dùng đăng nhập tạo dự án và tự động trở thành OWNER của dự án.",
+)
+def create_new_project(
+    project_in: ProjectCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return create_project(db=db, project_in=project_in, current_user=current_user)
 
 
 @router.get(

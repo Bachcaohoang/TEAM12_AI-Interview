@@ -190,3 +190,113 @@ def test_get_project_detail_inactive_user():
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 403
+
+
+# ==========================================
+# TESTS CHO TASK TB8ED6A: POST /projects
+# ==========================================
+
+def test_create_project_success():
+    """7. Người dùng đăng nhập tạo dự án thành công -> Trả về 201 và tự động trở thành OWNER trong DB."""
+    token = create_test_token("outsider@test.com")
+    payload = {
+        "name": "Dự án mới tạo",
+        "description": "Mô tả dự án mới",
+    }
+    response = client.post(
+        "/projects",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Dự án mới tạo"
+    assert data["description"] == "Mô tả dự án mới"
+    assert "id" in data
+    new_project_id = data["id"]
+
+    # Kiểm tra trực tiếp trong Database
+    db = TestingSessionLocal()
+    try:
+        user = db.query(User).filter(User.email == "outsider@test.com").first()
+        assert user is not None
+        assert data["owner_id"] == user.id
+
+        # Kiểm tra bản ghi Project
+        project = db.query(Project).filter(Project.id == new_project_id).first()
+        assert project is not None
+        assert project.owner_id == user.id
+
+        # Kiểm tra tự động trở thành OWNER trong ProjectMember
+        member = (
+            db.query(ProjectMember)
+            .filter(
+                ProjectMember.project_id == new_project_id,
+                ProjectMember.user_id == user.id,
+            )
+            .first()
+        )
+        assert member is not None
+        assert member.role == "OWNER"
+    finally:
+        db.close()
+
+
+def test_create_project_unauthenticated():
+    """8. Tạo dự án khi chưa đăng nhập -> Phải trả về 401 Unauthorized."""
+    response = client.post(
+        "/projects",
+        json={"name": "Dự án không có quyền", "description": "Test unauth"},
+    )
+    assert response.status_code == 401
+
+
+def test_create_project_inactive_user():
+    """9. Tài khoản bị vô hiệu hóa tạo dự án -> Phải trả về 403 Forbidden."""
+    token = create_test_token("inactive@test.com")
+    response = client.post(
+        "/projects",
+        json={"name": "Dự án từ user bị khóa", "description": "Test inactive"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
+
+def test_create_project_validation_error():
+    """10. Gửi thiếu trường bắt buộc 'name' -> Phải trả về 400 Bad Request."""
+    token = create_test_token("owner@test.com")
+    response = client.post(
+        "/projects",
+        json={"description": "Thiếu tên dự án"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert data["success"] is False
+    assert data["error"]["code"] == 400
+    assert "dữ liệu đầu vào không hợp lệ" in data["error"]["message"].lower()
+
+
+def test_created_project_owner_can_read_detail():
+    """11. Người tạo dự án tự động xem được chi tiết dự án vừa tạo với quyền OWNER."""
+    token = create_test_token("outsider@test.com")
+    create_res = client.post(
+        "/projects",
+        json={"name": "Dự án xem chi tiết", "description": "Test read detail"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert create_res.status_code == 201
+    proj_id = create_res.json()["id"]
+
+    # Xem chi tiết dự án vừa tạo
+    detail_res = client.get(
+        f"/projects/{proj_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert detail_res.status_code == 200
+    detail_data = detail_res.json()
+    assert detail_data["name"] == "Dự án xem chi tiết"
+    assert len(detail_data["members"]) == 1
+    assert detail_data["members"][0]["role"] == "OWNER"
+    assert detail_data["members"][0]["user"]["email"] == "outsider@test.com"
+
