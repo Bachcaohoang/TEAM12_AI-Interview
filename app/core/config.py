@@ -29,7 +29,16 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    @property
+    def secret_key(self) -> str:
+        return self.SECRET_KEY
+
+    @property
+    def algorithm(self) -> str:
+        return self.ALGORITHM
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 
 settings = Settings()

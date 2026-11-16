@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 from app.schemas.user import UserResponse
+from app.schemas.project_member import ProjectMemberResponse
 
 
 class ProjectBase(BaseModel):
@@ -28,3 +29,7 @@ class ProjectResponse(ProjectBase):
     created_at: datetime
     updated_at: datetime
     owner: Optional[UserResponse] = None
+
+
+class ProjectDetailResponse(ProjectResponse):
+    members: list[ProjectMemberResponse] = []

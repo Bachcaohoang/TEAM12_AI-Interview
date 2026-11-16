@@ -101,3 +101,21 @@ class EmailAlreadyExistsException(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email này đã được sử dụng trên hệ thống",
         )
+
+
+class ProjectNotFoundException(HTTPException):
+    """Lỗi Dự án không tồn tại."""
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dự án không tồn tại",
+        )
+
+
+class NotProjectMemberException(HTTPException):
+    """Lỗi Người dùng không phải là thành viên của dự án."""
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ thành viên dự án mới có quyền xem thông tin chi tiết",
+        )
