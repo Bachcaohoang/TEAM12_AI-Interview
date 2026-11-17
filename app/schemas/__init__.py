@@ -1,13 +1,50 @@
-"""Các schema Pydantic dùng kiểm tra dữ liệu vào và ra API."""
+from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
+from app.schemas.project_member import (
+    ProjectMemberAdd,
+    ProjectMemberBase,
+    ProjectMemberResponse,
+    ProjectMemberUpdate,
+)
+from app.schemas.task import TaskBase, TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.user import (
+    ForgotPasswordRequest,
+    PasswordChangeRequest,
+    ResetPasswordRequest,
+    UserBase,
+    UserCreate,
+    UserProfileUpdate,
+    UserRead,
+    UserResponse,
+    UserUpdate,
+)
 
-from app.schemas.user import UserBase, UserCreate, UserUpdate, UserResponse
-from app.schemas.project import ProjectBase, ProjectCreate, ProjectUpdate, ProjectResponse
-from app.schemas.project_member import ProjectMemberBase, ProjectMemberAdd, ProjectMemberUpdate, ProjectMemberResponse
-from app.schemas.task import TaskBase, TaskCreate, TaskUpdate, TaskResponse
+# Alias tương thích
+ProjectMemberCreate = ProjectMemberAdd
 
 __all__ = [
-    "UserBase", "UserCreate", "UserUpdate", "UserResponse",
-    "ProjectBase", "ProjectCreate", "ProjectUpdate", "ProjectResponse",
-    "ProjectMemberBase", "ProjectMemberAdd", "ProjectMemberUpdate", "ProjectMemberResponse",
-    "TaskBase", "TaskCreate", "TaskUpdate", "TaskResponse",
+    "UserBase",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "UserRead",
+    "UserProfileUpdate",
+    "PasswordChangeRequest",
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
+    "LoginRequest",
+    "TokenResponse",
+    "RefreshTokenRequest",
+    "ProjectCreate",
+    "ProjectRead",
+    "ProjectUpdate",
+    "ProjectMemberBase",
+    "ProjectMemberAdd",
+    "ProjectMemberCreate",
+    "ProjectMemberUpdate",
+    "ProjectMemberResponse",
+    "TaskBase",
+    "TaskCreate",
+    "TaskUpdate",
+    "TaskResponse",
 ]

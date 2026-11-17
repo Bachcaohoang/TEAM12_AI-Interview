@@ -1,20 +1,13 @@
-"""Tạo engine và session factory để truy cập MySQL."""
+"""Tạo engine và session factory để truy cập database."""
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Khởi tạo SQLAlchemy Engine hỗ trợ MySQL với Connection Pooling
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,  # Tự động kiểm tra tính sống còn của connection trước khi dùng
-    pool_size=10,        # Duy trì tối đa 10 connection
-    max_overflow=20,     # Cho phép mở rộng thêm 20 connection khi truy cập cao
-)
+engine_kwargs = {"pool_pre_ping": True}
+if settings.database_url.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-)
+engine = create_engine(settings.database_url, **engine_kwargs)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)

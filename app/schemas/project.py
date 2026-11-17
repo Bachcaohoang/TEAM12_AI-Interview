@@ -1,14 +1,14 @@
-"""Schema Pydantic cho Entity Project."""
+"""Schema dự án dành cho dữ liệu API."""
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
-from app.schemas.user import UserResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    status: Optional[str] = Field("in_progress", description="pending, in_progress, completed, cancelled")
 
 
 class ProjectCreate(ProjectBase):
@@ -16,15 +16,15 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    status: Optional[str] = Field(None, description="pending, in_progress, completed, cancelled")
 
 
-class ProjectResponse(ProjectBase):
+class ProjectRead(ProjectBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     owner_id: int
-    created_at: datetime
-    updated_at: datetime
-    owner: Optional[UserResponse] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
