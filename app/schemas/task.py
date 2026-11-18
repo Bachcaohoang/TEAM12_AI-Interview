@@ -32,6 +32,10 @@ class TaskResponse(TaskBase):
     id: int
     project_id: int
     assignee_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     assignee: Optional[UserResponse] = None
+
+
+# Alias tương thích
+TaskRead = TaskResponse
