@@ -6,7 +6,14 @@ from app.schemas.project_member import (
     ProjectMemberResponse,
     ProjectMemberUpdate,
 )
-from app.schemas.task import TaskBase, TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.task import (
+    PaginatedTaskResponse,
+    TaskBase,
+    TaskCreate,
+    TaskRead,
+    TaskResponse,
+    TaskUpdate,
+)
 from app.schemas.user import (
     ForgotPasswordRequest,
     PasswordChangeRequest,
@@ -47,4 +54,6 @@ __all__ = [
     "TaskCreate",
     "TaskUpdate",
     "TaskResponse",
+    "TaskRead",
+    "PaginatedTaskResponse",
 ]

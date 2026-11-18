@@ -37,5 +37,16 @@ class TaskResponse(TaskBase):
     assignee: Optional[UserResponse] = None
 
 
+class PaginatedTaskResponse(BaseModel):
+    """Schema phản hồi danh sách Task có phân trang và tổng số bản ghi."""
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+    items: list[TaskResponse]
+
+
 # Alias tương thích
 TaskRead = TaskResponse

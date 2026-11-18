@@ -9,10 +9,9 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.dependencies.auth import get_current_user
 from app.dependencies.get_db import get_db
 from app.models.project import Project
-from app.models.task import Task
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.schemas.task import TaskResponse
+from app.schemas.task import PaginatedTaskResponse
 from app.services import project as project_service
 from app.services import task as task_service
 
@@ -152,9 +151,9 @@ def delete_project_endpoint(
 
 @router.get(
     "/{project_id}/tasks",
-    response_model=list[TaskResponse],
+    response_model=PaginatedTaskResponse,
     tags=["tasks"],
-    summary="Lấy danh sách công việc trong dự án có hỗ trợ tìm kiếm và lọc (Task 37)",
+    summary="Lấy danh sách công việc trong dự án có hỗ trợ Search, Filter, Sort và Pagination",
 )
 def list_project_tasks(
     project_id: int,
@@ -170,9 +169,21 @@ def list_project_tasks(
     assignee_id: Optional[int] = Query(
         None, description="Lọc theo ID người được giao việc"
     ),
+    page: int = Query(
+        1, description="Trang hiện tại (mặc định là 1, >= 1)"
+    ),
+    page_size: int = Query(
+        10, description="Số lượng bản ghi mỗi trang (mặc định là 10, tối đa 100)"
+    ),
+    sort_by: str = Query(
+        "created_at", description="Trường cần sắp xếp: created_at, updated_at, title, status, priority"
+    ),
+    sort_order: str = Query(
+        "desc", description="Chiều sắp xếp: asc (tăng dần) hoặc desc (giảm dần)"
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Task]:
+) -> dict:
     """
     Lấy danh sách công việc trong một dự án:
     - Bắt buộc kiểm tra quyền thành viên / chủ sở hữu dự án hoặc Admin.
@@ -180,7 +191,8 @@ def list_project_tasks(
     - Lọc theo trạng thái (status: TODO, IN_PROGRESS, DONE).
     - Lọc theo mức độ ưu tiên (priority: LOW, MEDIUM, HIGH).
     - Lọc theo người được giao việc (assignee_id).
-    - Có thể kết hợp đồng thời nhiều điều kiện lọc (kết hợp logic AND tại database).
+    - Sắp xếp linh hoạt theo trường (sort_by) và chiều sắp xếp (sort_order).
+    - Phân trang trực tiếp tại database (offset/limit) với `page` và `page_size`.
     """
     try:
         return task_service.get_project_tasks(
@@ -191,6 +203,10 @@ def list_project_tasks(
             status=status_filter,
             priority=priority,
             assignee_id=assignee_id,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
     except NotFoundError as exc:
         raise HTTPException(
