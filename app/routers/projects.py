@@ -5,12 +5,13 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import PermissionDeniedError
+from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.dependencies.auth import get_current_user, get_owned_project
 from app.dependencies.get_db import get_db
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
+from app.schemas.project_member import ProjectMemberAdd, ProjectMemberResponse
 from app.services import project as project_service
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -140,5 +141,34 @@ def delete_project_endpoint(
     except PermissionDeniedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{project_id}/members",
+    response_model=ProjectMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Thêm thành viên vào dự án (chỉ OWNER)",
+)
+def add_member_to_project(
+    member_in: ProjectMemberAdd,
+    project: Project = Depends(get_owned_project),
+    db: Session = Depends(get_db),
+) -> ProjectMemberResponse:
+    try:
+        return project_service.add_project_member(
+            db=db,
+            project=project,
+            member_in=member_in,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc

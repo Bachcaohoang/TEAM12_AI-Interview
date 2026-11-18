@@ -3,11 +3,11 @@
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from app.core.exceptions import PermissionDeniedError
-from app.models.project import Project
+from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.models.project import Project, ProjectMember
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.schemas.project_member import ProjectMemberAdd
 
 
 def get_projects(
@@ -20,8 +20,8 @@ def get_projects(
 ) -> list[Project]:
     """
     Lấy danh sách dự án:
-- Nếu admin hoặc manager: xem được tất cả các dự án trong hệ thống.
-- Nếu user thông thường: xem các dự án do chính mình tạo/sở hữu.
+    - Nếu admin hoặc manager: xem được tất cả các dự án trong hệ thống.
+    - Nếu user thông thường: xem các dự án do chính mình tạo/sở hữu.
     Hỗ trợ tìm kiếm theo tên và lọc theo trạng thái.
     """
     query = select(Project)
@@ -33,7 +33,7 @@ def get_projects(
     if status:
         query = query.where(Project.status == status.strip())
 
-    query = query.offset(skip).limit(limit).order_by(Project.id.desc())
+    query = query.order_by(Project.id.desc()).offset(skip).limit(limit)
     return list(db.scalars(query).all())
 
 
@@ -82,3 +82,36 @@ def delete_project(db: Session, project: Project, current_user: User) -> None:
 
     db.delete(project)
     db.commit()
+
+
+def add_project_member(
+    db: Session,
+    project: Project,
+    member_in: ProjectMemberAdd,
+) -> ProjectMember:
+    """Thêm thành viên vào dự án, không cho thêm trùng."""
+    target_user = db.scalar(select(User).where(User.id == member_in.user_id))
+    if not target_user:
+        raise NotFoundError(f"Không tìm thấy người dùng với ID {member_in.user_id}.")
+
+    if target_user.id == project.owner_id:
+        raise ValueError("Người dùng này đã là chủ sở hữu (OWNER) của dự án.")
+
+    existing_member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == member_in.user_id,
+        )
+    )
+    if existing_member:
+        raise ValueError("Người dùng này đã là thành viên của dự án.")
+
+    new_member = ProjectMember(
+        project_id=project.id,
+        user_id=member_in.user_id,
+        role=(member_in.role or "MEMBER").strip().upper(),
+    )
+    db.add(new_member)
+    db.commit()
+    db.refresh(new_member)
+    return new_member
