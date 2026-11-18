@@ -115,3 +115,27 @@ def add_project_member(
     db.commit()
     db.refresh(new_member)
     return new_member
+
+
+def remove_project_member(
+    db: Session,
+    project: Project,
+    user_id: int,
+) -> None:
+    if user_id == project.owner_id:
+        raise ValueError("Không thể xóa chủ sở hữu (OWNER) khỏi dự án.")
+
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    if not member:
+        raise NotFoundError(f"Không tìm thấy thành viên với user_id {user_id} trong dự án.")
+
+    if (member.role or "").strip().upper() == "OWNER":
+        raise ValueError("Không thể xóa chủ sở hữu (OWNER) khỏi dự án.")
+
+    db.delete(member)
+    db.commit()
