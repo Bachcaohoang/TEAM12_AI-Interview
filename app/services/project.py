@@ -1,10 +1,10 @@
 """Nghiệp vụ quản lý dự án."""
 
 from typing import Optional
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.core.exceptions import PermissionDeniedError
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate
@@ -20,8 +20,8 @@ def get_projects(
 ) -> list[Project]:
     """
     Lấy danh sách dự án:
-    - Nếu admin hoặc manager: xem được tất cả các dự án trong hệ thống.
-    - Nếu user thông thường: xem các dự án do chính mình tạo/sở hữu.
+- Nếu admin hoặc manager: xem được tất cả các dự án trong hệ thống.
+- Nếu user thông thường: xem các dự án do chính mình tạo/sở hữu.
     Hỗ trợ tìm kiếm theo tên và lọc theo trạng thái.
     """
     query = select(Project)
@@ -59,9 +59,9 @@ def create_project(db: Session, project_in: ProjectCreate, owner_id: int) -> Pro
 def update_project(
     db: Session, project: Project, project_in: ProjectUpdate, current_user: User
 ) -> Project:
-    """Cập nhật dự án (yêu cầu là chủ dự án hoặc admin)."""
-    if current_user.role != "admin" and project.owner_id != current_user.id:
-        raise PermissionDeniedError("Bạn không có quyền sửa dự án này.")
+    """Cập nhật dự án (chỉ OWNER)."""
+    if project.owner_id != current_user.id:
+        raise PermissionDeniedError("Chỉ OWNER mới có quyền sửa dự án này.")
 
     if project_in.name is not None:
         project.name = project_in.name.strip()
@@ -76,9 +76,9 @@ def update_project(
 
 
 def delete_project(db: Session, project: Project, current_user: User) -> None:
-    """Xóa dự án (yêu cầu là chủ dự án hoặc admin)."""
-    if current_user.role != "admin" and project.owner_id != current_user.id:
-        raise PermissionDeniedError("Bạn không có quyền xóa dự án này.")
+    """Xóa dự án (chỉ OWNER)."""
+    if project.owner_id != current_user.id:
+        raise PermissionDeniedError("Chỉ OWNER mới có quyền xóa dự án này.")
 
     db.delete(project)
     db.commit()

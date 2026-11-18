@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, PermissionDeniedError
-from app.dependencies.auth import get_current_user
+from app.core.exceptions import PermissionDeniedError
+from app.dependencies.auth import get_current_user, get_owned_project
 from app.dependencies.get_db import get_db
 from app.models.project import Project
 from app.models.user import User
@@ -31,14 +31,6 @@ def list_projects(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[Project]:
-    """
-    Lấy danh sách dự án:
-    - Admin/Manager: xem danh sách tất cả các dự án trong hệ thống.
-    - User thông thường: xem danh sách các dự án do chính mình sở hữu.
-    - Hỗ trợ phân trang bằng `skip` và `limit`.
-    - Hỗ trợ tìm kiếm theo tên `search`.
-    - Hỗ trợ lọc theo trạng thái `status` (ví dụ: 'in_progress', 'completed').
-    """
     return project_service.get_projects(
         db,
         current_user=current_user,
@@ -60,7 +52,6 @@ def create_new_project(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Project:
-    """Tạo dự án mới với chủ sở hữu là người dùng hiện tại."""
     return project_service.create_project(
         db, project_in=project_in, owner_id=current_user.id
     )
@@ -76,14 +67,12 @@ def get_project_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Project:
-    """Lấy thông tin chi tiết một dự án."""
     project = project_service.get_project_by_id(db, project_id)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Không tìm thấy dự án với ID {project_id}",
         )
-    # Kiểm tra quyền xem: nếu không phải admin/manager thì phải là chủ sở hữu
     if current_user.role not in ("admin", "manager") and project.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -95,21 +84,36 @@ def get_project_detail(
 @router.put(
     "/{project_id}",
     response_model=ProjectRead,
-    summary="Cập nhật thông tin dự án",
+    summary="Cập nhật toàn bộ thông tin dự án",
 )
 def update_project_detail(
-    project_id: int,
     project_in: ProjectUpdate,
+    project: Project = Depends(get_owned_project),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Project:
-    """Cập nhật thông tin dự án (chỉ chủ dự án hoặc admin)."""
-    project = project_service.get_project_by_id(db, project_id)
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy dự án với ID {project_id}",
+    try:
+        return project_service.update_project(
+            db, project=project, project_in=project_in, current_user=current_user
         )
+    except PermissionDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch(
+    "/{project_id}",
+    response_model=ProjectRead,
+    summary="Cập nhật một phần thông tin dự án",
+)
+def partial_update_project_detail(
+    project_in: ProjectUpdate,
+    project: Project = Depends(get_owned_project),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Project:
     try:
         return project_service.update_project(
             db, project=project, project_in=project_in, current_user=current_user
@@ -127,17 +131,10 @@ def update_project_detail(
     summary="Xóa một dự án",
 )
 def delete_project_endpoint(
-    project_id: int,
+    project: Project = Depends(get_owned_project),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
-    """Xóa dự án (chỉ chủ dự án hoặc admin)."""
-    project = project_service.get_project_by_id(db, project_id)
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy dự án với ID {project_id}",
-        )
     try:
         project_service.delete_project(db, project=project, current_user=current_user)
     except PermissionDeniedError as exc:

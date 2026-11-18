@@ -28,3 +28,12 @@ class ProjectRead(ProjectBase):
     owner_id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+    class Config:
+        from_attributes = True
