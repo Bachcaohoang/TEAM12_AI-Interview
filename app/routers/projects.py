@@ -11,10 +11,9 @@ from app.dependencies.get_db import get_db
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.schemas.task import PaginatedTaskResponse
+from app.schemas.task import PaginatedTaskResponse, ProjectTaskCreate, TaskResponse
 from app.services import project as project_service
 from app.services import task as task_service
-
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
@@ -207,6 +206,47 @@ def list_project_tasks(
             page_size=page_size,
             sort_by=sort_by,
             sort_order=sort_order,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+@router.post(
+    "/{project_id}/tasks",
+    response_model=TaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["tasks"],
+    summary="Tạo công việc mới trong dự án (thành viên dự án có quyền tạo)",
+)
+def create_project_task_endpoint(
+    project_id: int,
+    task_in: ProjectTaskCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Task:
+    """
+    Tạo công việc mới thuộc dự án:
+    - Yêu cầu đăng nhập và là thành viên của dự án (hoặc chủ dự án / Admin).
+    - Nhận `title`, `description`, `due_date` (cùng các trường tùy chọn `status`, `priority`, `assignee_id`).
+    """
+    try:
+        return task_service.create_project_task(
+            db=db,
+            project_id=project_id,
+            task_in=task_in,
+            current_user=current_user,
         )
     except NotFoundError as exc:
         raise HTTPException(

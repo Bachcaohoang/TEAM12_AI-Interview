@@ -1,36 +1,30 @@
 """Script khởi tạo dữ liệu mẫu (Seed Data) cho dự án AI Interview & Project Management."""
-import sys
+
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Sau đó mới import các module của app
-from sqlalchemy.orm import Session
-from app.core.security import hash_password
-from app.db.session import SessionLocal, engine
-...
-import sys
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.db.session import SessionLocal, engine
 from app.db.base import Base
-from app.models.user import User
+from app.db.session import SessionLocal, engine
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
+from app.models.user import User
 
 
-def seed_data():
+def seed_data() -> None:
     """Tự động kiểm tra và chèn dữ liệu mẫu vào Database."""
     print("🌱 Đang kết nối Database và kiểm tra cấu trúc bảng...")
-    
-    # Tự động tạo các bảng nếu chưa có
+
     Base.metadata.create_all(bind=engine)
-    
+
     db: Session = SessionLocal()
 
     try:
-        # 1. Kiểm tra xem đã có dữ liệu trong bảng users chưa
         existing_user = db.query(User).first()
         if existing_user:
             print("⚠️ Database đã có dữ liệu sẵn! Bỏ qua quá trình seed để tránh trùng lặp.")
@@ -38,7 +32,6 @@ def seed_data():
 
         print("🚀 Đang khởi tạo dữ liệu mẫu...")
 
-        # 2. Tạo User mẫu (1 Admin, 2 User thường)
         admin = User(
             email="admin@gmail.com",
             full_name="Quản trị viên (Admin)",
@@ -68,7 +61,6 @@ def seed_data():
         db.refresh(user2)
         print("  ✓ Đã khởi tạo 3 Users mẫu.")
 
-        # 3. Tạo Project mẫu
         project1 = Project(
             name="Dự án AI Interview Backend",
             description="Xây dựng hệ thống backend quản lý phỏng vấn AI bằng FastAPI & MySQL.",
@@ -86,7 +78,6 @@ def seed_data():
         db.refresh(project2)
         print("  ✓ Đã khởi tạo 2 Projects mẫu.")
 
-        # 4. Tạo Thành viên dự án (ProjectMember)
         pm1 = ProjectMember(project_id=project1.id, user_id=user1.id, role="OWNER")
         pm2 = ProjectMember(project_id=project1.id, user_id=user2.id, role="MEMBER")
         pm3 = ProjectMember(project_id=project2.id, user_id=admin.id, role="OWNER")
@@ -96,7 +87,6 @@ def seed_data():
         db.commit()
         print("  ✓ Đã gán thành viên vào các dự án.")
 
-        # 5. Tạo Task mẫu
         task1 = Task(
             title="[Database] Kết nối DB MySQL",
             description="Kết nối MySQL bằng SQLAlchemy; xây dựng engine, SessionLocal và dependency get_db.",

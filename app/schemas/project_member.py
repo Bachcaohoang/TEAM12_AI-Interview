@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.user import UserResponse
+
 
 
 class ProjectMemberBase(BaseModel):
@@ -11,7 +12,7 @@ class ProjectMemberBase(BaseModel):
 
 
 class ProjectMemberAdd(ProjectMemberBase):
-    user_id: int
+    user_id: int = Field(..., gt=0, examples=[1])
 
 
 class ProjectMemberUpdate(BaseModel):

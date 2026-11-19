@@ -8,6 +8,7 @@ from app.schemas.project_member import (
 )
 from app.schemas.task import (
     PaginatedTaskResponse,
+    ProjectTaskCreate,
     TaskBase,
     TaskCreate,
     TaskRead,
@@ -52,6 +53,7 @@ __all__ = [
     "ProjectMemberResponse",
     "TaskBase",
     "TaskCreate",
+    "ProjectTaskCreate",
     "TaskUpdate",
     "TaskResponse",
     "TaskRead",
