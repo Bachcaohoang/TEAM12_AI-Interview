@@ -360,3 +360,49 @@ def update_task(
         .where(Task.id == task.id)
     )
     return updated_task or task
+
+
+def can_delete_project_task(db: Session, project: Project, user: User) -> bool:
+    """
+    Kiểm tra quyền xóa công việc trong dự án:
+    - Admin hệ thống có toàn quyền.
+    - Chủ sở hữu dự án (project.owner_id) có quyền xóa.
+    - Thành viên dự án có vai trò OWNER hoặc MANAGER có quyền xóa.
+    - Thành viên thường (MEMBER) hoặc người ngoài dự án không có quyền xóa.
+    """
+    if user.role and user.role.strip().upper() == "ADMIN":
+        return True
+    if project.owner_id == user.id:
+        return True
+
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user.id,
+        )
+    )
+    if not member or not member.role:
+        return False
+
+    return member.role.strip().upper() in {"OWNER", "MANAGER"}
+
+
+def delete_task(db: Session, task_id: int, current_user: User) -> None:
+    """
+    Xóa một công việc theo ID:
+    - Raise NotFoundError (404) nếu công việc hoặc dự án không tồn tại.
+    - Raise PermissionDeniedError (403) nếu user không có quyền xóa task trong dự án.
+    """
+    task = db.scalar(select(Task).where(Task.id == task_id))
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
+
+    project = db.scalar(select(Project).where(Project.id == task.project_id))
+    if not project:
+        raise NotFoundError(f"Không tìm thấy dự án với ID {task.project_id}.")
+
+    if not can_delete_project_task(db, project, current_user):
+        raise PermissionDeniedError("Bạn không có quyền xóa công việc này.")
+
+    db.delete(task)
+    db.commit()
