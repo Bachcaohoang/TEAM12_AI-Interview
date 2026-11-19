@@ -15,6 +15,11 @@ from app.schemas.task import ProjectTaskCreate, TaskUpdate
 # Các giá trị hợp lệ theo nghiệp vụ và model
 VALID_TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
 VALID_TASK_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
+ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "TODO": {"IN_PROGRESS"},
+    "IN_PROGRESS": {"TODO", "DONE"},
+    "DONE": {"IN_PROGRESS"},
+}
 ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "title", "status", "priority"}
 VALID_SORT_ORDERS = {"asc", "desc"}
 
@@ -73,6 +78,32 @@ def validate_project_assignee(db: Session, project: Project, assignee_id: Option
     if not is_user_project_member(db, project, assignee):
         raise ValueError(
             f"Người dùng với ID {assignee_id} không phải là thành viên của dự án này."
+        )
+
+
+def validate_status_transition(current_status: str, new_status: str) -> None:
+    """
+    Kiểm tra tính hợp lệ khi chuyển trạng thái công việc:
+    - TODO -> IN_PROGRESS
+    - IN_PROGRESS -> TODO | DONE
+    - DONE -> IN_PROGRESS
+    """
+    current_clean = (current_status or "TODO").strip().upper()
+    new_clean = new_status.strip().upper()
+
+    if new_clean not in VALID_TASK_STATUSES:
+        valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(f"Trạng thái '{new_status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+
+    if current_clean == new_clean:
+        return
+
+    allowed_next = ALLOWED_STATUS_TRANSITIONS.get(current_clean, set())
+    if new_clean not in allowed_next:
+        allowed_str = ", ".join(sorted(allowed_next)) if allowed_next else "không có"
+        raise ValueError(
+            f"Không thể chuyển trạng thái từ '{current_clean}' sang '{new_clean}'. "
+            f"Các trạng thái tiếp theo hợp lệ: {allowed_str}."
         )
 
 
@@ -200,7 +231,7 @@ def create_project_task(
     task_in: ProjectTaskCreate,
     current_user: User,
 ) -> Task:
-    """Tạo công việc mới trong một dự án (chỉ cho phép gán assignee thuộc project)."""
+    """Tạo công việc mới trong một dự án (validate status, priority và assignee thuộc project)."""
     project = check_project_access(db, project_id, current_user)
 
     title_clean = task_in.title.strip()
@@ -250,7 +281,8 @@ def update_task(
     Cập nhật một phần công việc (PATCH):
     - Kiểm tra task tồn tại (NotFoundError -> 404).
     - Kiểm tra user thuộc project của task (PermissionDeniedError -> 403).
-    - Nếu có cập nhật assignee_id: bắt buộc assignee phải thuộc project (hoặc None).
+    - Kiểm tra workflow chuyển trạng thái hợp lệ (ValueError -> 400).
+    - Kiểm tra priority hợp lệ (LOW, MEDIUM, HIGH) và assignee thuộc project.
     - Chỉ cập nhật các trường được gửi lên (exclude_unset=True), không ghi đè trường không gửi lên.
     """
     task = db.scalar(select(Task).where(Task.id == task_id))
@@ -276,17 +308,15 @@ def update_task(
 
     if "status" in update_data:
         raw_status = update_data["status"]
-        if raw_status is None:
+        if raw_status is None or not raw_status.strip():
             raise ValueError("Trạng thái công việc không được để trống.")
         status_clean = raw_status.strip().upper()
-        if status_clean not in VALID_TASK_STATUSES:
-            valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
-            raise ValueError(f"Trạng thái '{raw_status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+        validate_status_transition(task.status, status_clean)
         task.status = status_clean
 
     if "priority" in update_data:
         raw_priority = update_data["priority"]
-        if raw_priority is None:
+        if raw_priority is None or not raw_priority.strip():
             raise ValueError("Mức độ ưu tiên không được để trống.")
         priority_clean = raw_priority.strip().upper()
         if priority_clean not in VALID_TASK_PRIORITIES:
