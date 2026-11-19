@@ -9,6 +9,7 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
 from app.models.user import User
+from app.schemas.task import ProjectTaskCreate
 
 # Các giá trị hợp lệ theo nghiệp vụ và model
 VALID_TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
@@ -114,3 +115,56 @@ def get_project_tasks(
     # Thực thi truy vấn với toàn bộ điều kiện AND
     tasks = list(db.scalars(query).unique().all())
     return tasks
+
+def create_project_task(
+    db: Session,
+    project_id: int,
+    task_in: ProjectTaskCreate,
+    current_user: User,
+) -> Task:
+    """
+    Tạo công việc mới trong một dự án:
+    - Kiểm tra dự án tồn tại (NotFoundError -> 404).
+    - Kiểm tra user hiện tại là thành viên dự án, chủ dự án hoặc Admin (PermissionDeniedError -> 403).
+    - Chuẩn hóa và kiểm tra hợp lệ title, status, priority, assignee_id.
+    """
+    check_project_access(db, project_id, current_user)
+
+    title_clean = task_in.title.strip()
+    if not title_clean:
+        raise ValueError("Tiêu đề công việc không được để trống.")
+
+    status_clean = (task_in.status or "TODO").strip().upper()
+    if status_clean not in VALID_TASK_STATUSES:
+        valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(f"Trạng thái '{task_in.status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+
+    priority_clean = (task_in.priority or "MEDIUM").strip().upper()
+    if priority_clean not in VALID_TASK_PRIORITIES:
+        valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
+        raise ValueError(f"Mức độ ưu tiên '{task_in.priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+
+    if task_in.assignee_id is not None:
+        assignee = db.scalar(select(User).where(User.id == task_in.assignee_id))
+        if not assignee:
+            raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {task_in.assignee_id}.")
+
+    new_task = Task(
+        title=title_clean,
+        description=task_in.description.strip() if task_in.description else None,
+        due_date=task_in.due_date,
+        status=status_clean,
+        priority=priority_clean,
+        project_id=project_id,
+        assignee_id=task_in.assignee_id,
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+
+    created_task = db.scalar(
+        select(Task)
+        .options(joinedload(Task.assignee))
+        .where(Task.id == new_task.id)
+    )
+    return created_task or new_task

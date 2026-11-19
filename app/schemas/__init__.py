@@ -18,6 +18,14 @@ from app.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from app.schemas.task import (
+    ProjectTaskCreate,
+    TaskBase,
+    TaskCreate,
+    TaskRead,
+    TaskResponse,
+    TaskUpdate,
+)
 
 # Alias tương thích
 ProjectMemberCreate = ProjectMemberAdd
@@ -47,4 +55,10 @@ __all__ = [
     "TaskCreate",
     "TaskUpdate",
     "TaskResponse",
+    "TaskBase",
+    "TaskCreate",
+    "ProjectTaskCreate",
+    "TaskUpdate",
+    "TaskResponse",
+    "TaskRead",
 ]
