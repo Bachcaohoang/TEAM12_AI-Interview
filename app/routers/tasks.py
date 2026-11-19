@@ -7,7 +7,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.dependencies.auth import get_current_user
 from app.dependencies.get_db import get_db
 from app.models.user import User
-from app.schemas.task import TaskResponse
+from app.schemas.task import TaskResponse, TaskUpdate
 from app.services import task as task_service
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -43,5 +43,41 @@ def get_task_detail(
     except PermissionDeniedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch(
+    "/{task_id}",
+    response_model=TaskResponse,
+    summary="Cập nhật công việc theo ID",
+    description="Cập nhật các trường hợp lệ được gửi lên, không ghi đè các trường không gửi lên.",
+)
+def update_task_endpoint(
+    task_in: TaskUpdate,
+    task_id: int = Path(..., gt=0, description="ID của công việc"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TaskResponse:
+    try:
+        return task_service.update_task(
+            db=db,
+            task_id=task_id,
+            task_in=task_in,
+            current_user=current_user,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc

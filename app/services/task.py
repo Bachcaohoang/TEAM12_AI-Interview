@@ -10,7 +10,7 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.task import ProjectTaskCreate
+from app.schemas.task import ProjectTaskCreate, TaskUpdate
 
 # Các giá trị hợp lệ theo nghiệp vụ và model
 VALID_TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
@@ -69,9 +69,7 @@ def get_project_tasks(
     sort_by: str = "created_at",
     sort_order: str = "desc",
 ) -> dict[str, Any]:
-    """
-    Lấy danh sách công việc trong một dự án có hỗ trợ Search, Filter, Sort và Pagination.
-    """
+    """Lấy danh sách công việc trong một dự án có hỗ trợ Search, Filter, Sort và Pagination."""
     check_project_access(db, project_id, current_user)
 
     if page < 1:
@@ -182,12 +180,7 @@ def create_project_task(
     task_in: ProjectTaskCreate,
     current_user: User,
 ) -> Task:
-    """
-    Tạo công việc mới trong một dự án:
-    - Kiểm tra dự án tồn tại (NotFoundError -> 404).
-    - Kiểm tra user hiện tại là thành viên dự án, chủ dự án hoặc Admin (PermissionDeniedError -> 403).
-    - Chuẩn hóa và kiểm tra hợp lệ title, status, priority, assignee_id.
-    """
+    """Tạo công việc mới trong một dự án."""
     check_project_access(db, project_id, current_user)
 
     title_clean = task_in.title.strip()
@@ -228,3 +221,75 @@ def create_project_task(
         .where(Task.id == new_task.id)
     )
     return created_task or new_task
+
+
+def update_task(
+    db: Session,
+    task_id: int,
+    task_in: TaskUpdate,
+    current_user: User,
+) -> Task:
+    """
+    Cập nhật một phần công việc (PATCH):
+    - Kiểm tra task tồn tại (NotFoundError -> 404).
+    - Kiểm tra user thuộc project của task (PermissionDeniedError -> 403).
+    - Chỉ cập nhật các trường được gửi lên (exclude_unset=True), không ghi đè trường không gửi lên.
+    """
+    task = db.scalar(select(Task).where(Task.id == task_id))
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
+
+    check_project_access(db, task.project_id, current_user)
+
+    update_data = task_in.model_dump(exclude_unset=True)
+
+    if "title" in update_data:
+        raw_title = update_data["title"]
+        if raw_title is None or not raw_title.strip():
+            raise ValueError("Tiêu đề công việc không được để trống.")
+        task.title = raw_title.strip()
+
+    if "description" in update_data:
+        raw_desc = update_data["description"]
+        task.description = raw_desc.strip() if raw_desc is not None else None
+
+    if "due_date" in update_data:
+        task.due_date = update_data["due_date"]
+
+    if "status" in update_data:
+        raw_status = update_data["status"]
+        if raw_status is None:
+            raise ValueError("Trạng thái công việc không được để trống.")
+        status_clean = raw_status.strip().upper()
+        if status_clean not in VALID_TASK_STATUSES:
+            valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
+            raise ValueError(f"Trạng thái '{raw_status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+        task.status = status_clean
+
+    if "priority" in update_data:
+        raw_priority = update_data["priority"]
+        if raw_priority is None:
+            raise ValueError("Mức độ ưu tiên không được để trống.")
+        priority_clean = raw_priority.strip().upper()
+        if priority_clean not in VALID_TASK_PRIORITIES:
+            valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
+            raise ValueError(f"Mức độ ưu tiên '{raw_priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+        task.priority = priority_clean
+
+    if "assignee_id" in update_data:
+        new_assignee_id = update_data["assignee_id"]
+        if new_assignee_id is not None:
+            assignee = db.scalar(select(User).where(User.id == new_assignee_id))
+            if not assignee:
+                raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {new_assignee_id}.")
+        task.assignee_id = new_assignee_id
+
+    db.commit()
+    db.refresh(task)
+
+    updated_task = db.scalar(
+        select(Task)
+        .options(joinedload(Task.assignee))
+        .where(Task.id == task.id)
+    )
+    return updated_task or task
