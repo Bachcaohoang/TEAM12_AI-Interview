@@ -10,7 +10,14 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.task import ProjectTaskCreate
+from app.schemas.task import ProjectTaskCreate, TaskUpdate
+from app.services.activity import (
+    ACTION_TASK_CREATED,
+    ACTION_TASK_DELETED,
+    ACTION_TASK_STATUS_CHANGED,
+    ACTION_TASK_UPDATED,
+    log_activity,
+)
 
 # Các giá trị hợp lệ theo nghiệp vụ và model
 VALID_TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
@@ -54,6 +61,17 @@ def check_project_access(db: Session, project_id: int, current_user: User) -> Pr
         raise PermissionDeniedError("Bạn không có quyền truy cập vào dự án này.")
 
     return project
+
+
+def get_task_for_user(db: Session, task_id: int, current_user: User) -> Task:
+    """Lấy task theo ID và kiểm tra quyền truy cập dự án chứa task."""
+    task = db.scalar(
+        select(Task).options(joinedload(Task.assignee)).where(Task.id == task_id)
+    )
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
+    check_project_access(db, task.project_id, current_user)
+    return task
 
 
 def get_project_tasks(
@@ -164,7 +182,6 @@ def get_project_tasks(
     )
 
     tasks = list(db.scalars(query).unique().all())
-<<<<<<< HEAD
 
     # 8. Tính toán metadata phân trang
     total_pages = math.ceil(total / page_size) if total > 0 else 0
@@ -180,8 +197,7 @@ def get_project_tasks(
         "has_previous": has_previous,
         "items": tasks,
     }
-=======
-    return tasks
+
 
 def create_project_task(
     db: Session,
@@ -226,6 +242,16 @@ def create_project_task(
         assignee_id=task_in.assignee_id,
     )
     db.add(new_task)
+    db.flush()
+    log_activity(
+        db,
+        user_id=current_user.id,
+        project_id=project_id,
+        action=ACTION_TASK_CREATED,
+        entity_type="task",
+        entity_id=new_task.id,
+        description=f"Tạo công việc '{title_clean}'.",
+    )
     db.commit()
     db.refresh(new_task)
 
@@ -235,4 +261,128 @@ def create_project_task(
         .where(Task.id == new_task.id)
     )
     return created_task or new_task
->>>>>>> origin/develop
+
+
+def _normalize_optional_status(status: Optional[str]) -> Optional[str]:
+    if status is None:
+        return None
+    status_clean = status.strip().upper()
+    if status_clean not in VALID_TASK_STATUSES:
+        valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(f"Trạng thái '{status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+    return status_clean
+
+
+def _normalize_optional_priority(priority: Optional[str]) -> Optional[str]:
+    if priority is None:
+        return None
+    priority_clean = priority.strip().upper()
+    if priority_clean not in VALID_TASK_PRIORITIES:
+        valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
+        raise ValueError(f"Mức độ ưu tiên '{priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+    return priority_clean
+
+
+def update_task(
+    db: Session,
+    task_id: int,
+    task_in: TaskUpdate,
+    current_user: User,
+) -> Task:
+    task = get_task_for_user(db, task_id, current_user)
+    old_status = task.status
+
+    if task_in.title is not None:
+        title_clean = task_in.title.strip()
+        if not title_clean:
+            raise ValueError("Tiêu đề công việc không được để trống.")
+        task.title = title_clean
+    if task_in.description is not None:
+        task.description = task_in.description.strip() if task_in.description else None
+    if task_in.due_date is not None:
+        task.due_date = task_in.due_date
+    if task_in.priority is not None:
+        task.priority = _normalize_optional_priority(task_in.priority)
+    if task_in.assignee_id is not None:
+        assignee = db.scalar(select(User).where(User.id == task_in.assignee_id))
+        if not assignee:
+            raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {task_in.assignee_id}.")
+        task.assignee_id = task_in.assignee_id
+    if task_in.status is not None:
+        task.status = _normalize_optional_status(task_in.status)
+
+    status_changed = task_in.status is not None and old_status != task.status
+    if status_changed:
+        log_activity(
+            db,
+            user_id=current_user.id,
+            project_id=task.project_id,
+            action=ACTION_TASK_STATUS_CHANGED,
+            entity_type="task",
+            entity_id=task.id,
+            description=f"Đổi trạng thái công việc '{task.title}' từ {old_status} sang {task.status}.",
+        )
+    else:
+        log_activity(
+            db,
+            user_id=current_user.id,
+            project_id=task.project_id,
+            action=ACTION_TASK_UPDATED,
+            entity_type="task",
+            entity_id=task.id,
+            description=f"Cập nhật công việc '{task.title}'.",
+        )
+
+    db.commit()
+    return get_task_for_user(db, task.id, current_user)
+
+
+def change_task_status(
+    db: Session,
+    task_id: int,
+    status: str,
+    current_user: User,
+) -> Task:
+    task = get_task_for_user(db, task_id, current_user)
+    new_status = _normalize_optional_status(status)
+    if new_status is None:
+        raise ValueError("Trạng thái công việc không được để trống.")
+    old_status = task.status
+    task.status = new_status
+    log_activity(
+        db,
+        user_id=current_user.id,
+        project_id=task.project_id,
+        action=ACTION_TASK_STATUS_CHANGED,
+        entity_type="task",
+        entity_id=task.id,
+        description=f"Đổi trạng thái công việc '{task.title}' từ {old_status} sang {new_status}.",
+    )
+    db.commit()
+    return get_task_for_user(db, task.id, current_user)
+
+
+def delete_task(db: Session, task_id: int, current_user: User) -> None:
+    from app.models.attachment import Attachment
+    from app.services.attachment import delete_physical_file
+
+    task = get_task_for_user(db, task_id, current_user)
+    stored_paths = list(
+        db.scalars(select(Attachment.stored_path).where(Attachment.task_id == task.id)).all()
+    )
+    title = task.title
+    project_id = task.project_id
+    log_activity(
+        db,
+        user_id=current_user.id,
+        project_id=project_id,
+        action=ACTION_TASK_DELETED,
+        entity_type="task",
+        entity_id=task.id,
+        description=f"Xóa công việc '{title}'.",
+    )
+    db.delete(task)
+    db.commit()
+    for stored_path in stored_paths:
+        delete_physical_file(stored_path)
+

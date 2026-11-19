@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_MINUTES: int = 15
 
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
+
+
     # Alias thuộc tính dạng chữ thường tương thích ngược
     @property
     def secret_key(self) -> str:

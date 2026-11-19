@@ -8,6 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.activity import ActivityLog
+    from app.models.attachment import Attachment
+    from app.models.comment import Comment
     from app.models.project import Project
     from app.models.project_member import ProjectMember
     from app.models.task import Task
@@ -37,6 +40,15 @@ class User(Base):
     )
     assigned_tasks: Mapped[List["Task"]] = relationship(
         "Task", back_populates="assignee"
+    )
+    comments: Mapped[List["Comment"]] = relationship(
+        "Comment", back_populates="author", cascade="all, delete-orphan"
+    )
+    attachments: Mapped[List["Attachment"]] = relationship(
+        "Attachment", back_populates="uploader", cascade="all, delete-orphan"
+    )
+    activities: Mapped[List["ActivityLog"]] = relationship(
+        "ActivityLog", back_populates="user"
     )
 
     @property
