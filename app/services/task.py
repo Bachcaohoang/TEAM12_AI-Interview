@@ -1,6 +1,7 @@
 """Nghiệp vụ quản lý công việc (Task)."""
 
 import math
+from datetime import datetime, timezone
 from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
@@ -20,7 +21,7 @@ ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "IN_PROGRESS": {"TODO", "DONE"},
     "DONE": {"IN_PROGRESS"},
 }
-ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "title", "status", "priority"}
+ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "title", "status", "priority", "due_date"}
 VALID_SORT_ORDERS = {"asc", "desc"}
 
 
@@ -105,6 +106,27 @@ def validate_status_transition(current_status: str, new_status: str) -> None:
             f"Không thể chuyển trạng thái từ '{current_clean}' sang '{new_clean}'. "
             f"Các trạng thái tiếp theo hợp lệ: {allowed_str}."
         )
+
+
+def validate_and_normalize_due_date(due_date: Optional[datetime]) -> Optional[datetime]:
+    """
+    Chuẩn hóa và kiểm tra hợp lệ thời hạn hoàn thành (due_date):
+    - Chuyển đổi timezone-aware datetime về naive UTC để lưu đồng nhất trong DB.
+    - Từ chối due_date nằm trong quá khứ (< thời điểm hiện tại UTC).
+    """
+    if due_date is None:
+        return None
+
+    if due_date.tzinfo is not None:
+        due_utc = due_date.astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        due_utc = due_date
+
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if due_utc < now_utc:
+        raise ValueError("Hạn chót (due_date) không được nằm trong quá khứ.")
+
+    return due_utc
 
 
 def get_project_tasks(
@@ -231,7 +253,7 @@ def create_project_task(
     task_in: ProjectTaskCreate,
     current_user: User,
 ) -> Task:
-    """Tạo công việc mới trong một dự án (validate status, priority và assignee thuộc project)."""
+    """Tạo công việc mới trong một dự án (validate status, priority, due_date và assignee)."""
     project = check_project_access(db, project_id, current_user)
 
     title_clean = task_in.title.strip()
@@ -248,12 +270,13 @@ def create_project_task(
         valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
         raise ValueError(f"Mức độ ưu tiên '{task_in.priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
 
+    due_date_utc = validate_and_normalize_due_date(task_in.due_date)
     validate_project_assignee(db, project, task_in.assignee_id)
 
     new_task = Task(
         title=title_clean,
         description=task_in.description.strip() if task_in.description else None,
-        due_date=task_in.due_date,
+        due_date=due_date_utc,
         status=status_clean,
         priority=priority_clean,
         project_id=project_id,
@@ -281,8 +304,7 @@ def update_task(
     Cập nhật một phần công việc (PATCH):
     - Kiểm tra task tồn tại (NotFoundError -> 404).
     - Kiểm tra user thuộc project của task (PermissionDeniedError -> 403).
-    - Kiểm tra workflow chuyển trạng thái hợp lệ (ValueError -> 400).
-    - Kiểm tra priority hợp lệ (LOW, MEDIUM, HIGH) và assignee thuộc project.
+    - Kiểm tra workflow chuyển trạng thái hợp lệ, priority, due_date và assignee thuộc project.
     - Chỉ cập nhật các trường được gửi lên (exclude_unset=True), không ghi đè trường không gửi lên.
     """
     task = db.scalar(select(Task).where(Task.id == task_id))
@@ -304,7 +326,7 @@ def update_task(
         task.description = raw_desc.strip() if raw_desc is not None else None
 
     if "due_date" in update_data:
-        task.due_date = update_data["due_date"]
+        task.due_date = validate_and_normalize_due_date(update_data["due_date"])
 
     if "status" in update_data:
         raw_status = update_data["status"]

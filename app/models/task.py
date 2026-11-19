@@ -1,6 +1,6 @@
 """Model Công việc (Task)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,3 +31,18 @@ class Task(Base):
     # Quan hệ
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     assignee: Mapped[Optional["User"]] = relationship("User", back_populates="assigned_tasks")
+
+    @property
+    def is_overdue(self) -> bool:
+        """Trả về True nếu task có hạn chót, chưa hoàn thành (DONE) và đã quá hạn."""
+        if self.due_date is None:
+            return False
+        if (self.status or "").strip().upper() == "DONE":
+            return False
+
+        due = self.due_date
+        if due.tzinfo is not None:
+            due = due.astimezone(timezone.utc).replace(tzinfo=None)
+
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        return due < now_utc
