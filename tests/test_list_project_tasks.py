@@ -86,7 +86,7 @@ def test_list_tasks_returns_only_project_tasks_without_leaking_others(client, tw
 
     res = client.get(f"/projects/{project_a_id}/tasks", headers=headers)
     assert res.status_code == 200
-    data = res.json()
+    data = res.json()["items"]
 
     assert len(data) == 2
     titles = {item["title"] for item in data}

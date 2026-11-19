@@ -70,29 +70,15 @@ def get_project_tasks(
     sort_order: str = "desc",
 ) -> dict[str, Any]:
     """
-    Lấy danh sách công việc trong một dự án có hỗ trợ Search, Filter, Sort và Pagination:
-    - Bắt buộc kiểm tra quyền truy cập dự án của user hiện tại.
-    - Chỉ lấy công việc thuộc đúng project_id (không lẫn sang dự án khác).
-    - search: tìm kiếm theo title (không phân biệt hoa thường, chứa từ khóa).
-    - status: lọc theo trạng thái (TODO, IN_PROGRESS, DONE).
-    - priority: lọc theo mức độ ưu tiên (LOW, MEDIUM, HIGH).
-    - assignee_id: lọc theo ID người được giao việc.
-    - sort_by: trường sắp xếp (created_at, updated_at, title, status, priority).
-    - sort_order: chiều sắp xếp (asc hoặc desc).
-    - page: trang hiện tại (>= 1).
-    - page_size: số lượng bản ghi mỗi trang (1 <= page_size <= 100).
-    - Đếm tổng số bản ghi sau khi lọc và phân trang trực tiếp tại database bằng offset & limit.
+    Lấy danh sách công việc trong một dự án có hỗ trợ Search, Filter, Sort và Pagination.
     """
-    # 1. Kiểm tra quyền truy cập dự án
     check_project_access(db, project_id, current_user)
 
-    # 2. Kiểm tra validation của tham số Pagination
     if page < 1:
         raise ValueError("Số trang (page) phải lớn hơn hoặc bằng 1.")
     if page_size < 1 or page_size > 100:
         raise ValueError("Kích thước trang (page_size) phải nằm trong khoảng từ 1 đến 100.")
 
-    # 3. Kiểm tra validation của tham số Sort
     sort_by_clean = (sort_by or "created_at").strip().lower()
     if sort_by_clean not in ALLOWED_SORT_FIELDS:
         valid_sort_str = ", ".join(sorted(ALLOWED_SORT_FIELDS))
@@ -106,16 +92,13 @@ def get_project_tasks(
             f"Chiều sắp xếp '{sort_order}' không hợp lệ. Chỉ chấp nhận 'asc' hoặc 'desc'."
         )
 
-    # 4. Xây dựng các điều kiện lọc (Search & Filter)
     filters = [Task.project_id == project_id]
 
-    # 4.1. Lọc theo search (tiêu đề công việc)
     if search is not None:
         search_clean = search.strip()
         if search_clean:
             filters.append(Task.title.ilike(f"%{search_clean}%"))
 
-    # 4.2. Lọc theo status (trạng thái)
     if status is not None:
         status_clean = status.strip().upper()
         if status_clean not in VALID_TASK_STATUSES:
@@ -125,7 +108,6 @@ def get_project_tasks(
             )
         filters.append(Task.status == status_clean)
 
-    # 4.3. Lọc theo priority (mức độ ưu tiên)
     if priority is not None:
         priority_clean = priority.strip().upper()
         if priority_clean not in VALID_TASK_PRIORITIES:
@@ -135,15 +117,12 @@ def get_project_tasks(
             )
         filters.append(Task.priority == priority_clean)
 
-    # 4.4. Lọc theo assignee_id (người được giao)
     if assignee_id is not None:
         filters.append(Task.assignee_id == assignee_id)
 
-    # 5. Đếm tổng số Task thỏa mãn điều kiện lọc (trước khi phân trang)
     count_query = select(func.count(Task.id)).where(*filters)
     total = db.scalar(count_query) or 0
 
-    # 6. Thiết lập tiêu chí sắp xếp (Sort)
     sort_column = getattr(Task, sort_by_clean)
     if sort_order_clean == "desc":
         order_clause = sort_column.desc()
@@ -152,7 +131,6 @@ def get_project_tasks(
         order_clause = sort_column.asc()
         tie_breaker = Task.id.asc()
 
-    # 7. Thiết lập phân trang (Pagination tại Database qua offset & limit)
     offset = (page - 1) * page_size
     query = (
         select(Task)
@@ -164,9 +142,7 @@ def get_project_tasks(
     )
 
     tasks = list(db.scalars(query).unique().all())
-<<<<<<< HEAD
 
-    # 8. Tính toán metadata phân trang
     total_pages = math.ceil(total / page_size) if total > 0 else 0
     has_next = page < total_pages
     has_previous = page > 1 and total > 0
@@ -180,8 +156,25 @@ def get_project_tasks(
         "has_previous": has_previous,
         "items": tasks,
     }
-=======
-    return tasks
+
+
+def get_task_by_id(db: Session, task_id: int, current_user: User) -> Task:
+    """
+    Lấy chi tiết một công việc theo ID:
+    - Raise NotFoundError (404) nếu công việc không tồn tại.
+    - Kiểm tra user hiện tại thuộc project của công việc (PermissionDeniedError -> 403).
+    """
+    task = db.scalar(
+        select(Task)
+        .options(joinedload(Task.assignee))
+        .where(Task.id == task_id)
+    )
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
+
+    check_project_access(db, task.project_id, current_user)
+    return task
+
 
 def create_project_task(
     db: Session,
@@ -235,4 +228,3 @@ def create_project_task(
         .where(Task.id == new_task.id)
     )
     return created_task or new_task
->>>>>>> origin/develop
