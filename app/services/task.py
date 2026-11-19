@@ -21,9 +21,9 @@ VALID_SORT_ORDERS = {"asc", "desc"}
 
 def is_user_project_member(db: Session, project: Project, user: User) -> bool:
     """
-    Kiểm tra xem user có quyền truy cập vào project hay không:
+    Kiểm tra xem user có quyền truy cập / thuộc project hay không:
     - Admin hệ thống có toàn quyền.
-    - Chủ sở hữu dự án (Owner) có toàn quyền.
+    - Chủ sở hữu dự án (Owner) thuộc dự án.
     - Thành viên dự án trong bảng project_members.
     """
     if user.role and user.role.strip().upper() == "ADMIN":
@@ -54,6 +54,26 @@ def check_project_access(db: Session, project_id: int, current_user: User) -> Pr
         raise PermissionDeniedError("Bạn không có quyền truy cập vào dự án này.")
 
     return project
+
+
+def validate_project_assignee(db: Session, project: Project, assignee_id: Optional[int]) -> None:
+    """
+    Kiểm tra người được giao việc (assignee):
+    - Nếu assignee_id là None: hợp lệ (không giao hoặc gỡ người phụ trách).
+    - Nếu user không tồn tại: raise NotFoundError (404).
+    - Nếu user không thuộc project: raise ValueError (400).
+    """
+    if assignee_id is None:
+        return
+
+    assignee = db.scalar(select(User).where(User.id == assignee_id))
+    if not assignee:
+        raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {assignee_id}.")
+
+    if not is_user_project_member(db, project, assignee):
+        raise ValueError(
+            f"Người dùng với ID {assignee_id} không phải là thành viên của dự án này."
+        )
 
 
 def get_project_tasks(
@@ -180,8 +200,8 @@ def create_project_task(
     task_in: ProjectTaskCreate,
     current_user: User,
 ) -> Task:
-    """Tạo công việc mới trong một dự án."""
-    check_project_access(db, project_id, current_user)
+    """Tạo công việc mới trong một dự án (chỉ cho phép gán assignee thuộc project)."""
+    project = check_project_access(db, project_id, current_user)
 
     title_clean = task_in.title.strip()
     if not title_clean:
@@ -197,10 +217,7 @@ def create_project_task(
         valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
         raise ValueError(f"Mức độ ưu tiên '{task_in.priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
 
-    if task_in.assignee_id is not None:
-        assignee = db.scalar(select(User).where(User.id == task_in.assignee_id))
-        if not assignee:
-            raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {task_in.assignee_id}.")
+    validate_project_assignee(db, project, task_in.assignee_id)
 
     new_task = Task(
         title=title_clean,
@@ -233,13 +250,14 @@ def update_task(
     Cập nhật một phần công việc (PATCH):
     - Kiểm tra task tồn tại (NotFoundError -> 404).
     - Kiểm tra user thuộc project của task (PermissionDeniedError -> 403).
+    - Nếu có cập nhật assignee_id: bắt buộc assignee phải thuộc project (hoặc None).
     - Chỉ cập nhật các trường được gửi lên (exclude_unset=True), không ghi đè trường không gửi lên.
     """
     task = db.scalar(select(Task).where(Task.id == task_id))
     if not task:
         raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
 
-    check_project_access(db, task.project_id, current_user)
+    project = check_project_access(db, task.project_id, current_user)
 
     update_data = task_in.model_dump(exclude_unset=True)
 
@@ -278,10 +296,7 @@ def update_task(
 
     if "assignee_id" in update_data:
         new_assignee_id = update_data["assignee_id"]
-        if new_assignee_id is not None:
-            assignee = db.scalar(select(User).where(User.id == new_assignee_id))
-            if not assignee:
-                raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {new_assignee_id}.")
+        validate_project_assignee(db, project, new_assignee_id)
         task.assignee_id = new_assignee_id
 
     db.commit()
