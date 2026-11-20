@@ -30,35 +30,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-super-secret-key-change-in-production-long-enough-32-chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    RESET_TOKEN_EXPIRE_MINUTES: int = 15
 
-    # Alias thuộc tính dạng chữ thường tương thích ngược
-    @property
-    def secret_key(self) -> str:
-        return self.SECRET_KEY
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    @property
-    def algorithm(self) -> str:
-        return self.ALGORITHM
-
-    @property
-    def access_token_expire_minutes(self) -> int:
-        return self.ACCESS_TOKEN_EXPIRE_MINUTES
-
-    @property
-    def refresh_token_expire_days(self) -> int:
-        return self.REFRESH_TOKEN_EXPIRE_DAYS
-
-    @property
-    def reset_token_expire_minutes(self) -> int:
-        return self.RESET_TOKEN_EXPIRE_MINUTES
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
 
 
 settings = Settings()

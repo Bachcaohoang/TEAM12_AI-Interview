@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
+from app.schemas.user import UserResponse
 
 
 class ProjectBase(BaseModel):
@@ -26,5 +27,6 @@ class ProjectRead(ProjectBase):
 
     id: int
     owner_id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    owner: Optional[UserResponse] = None
