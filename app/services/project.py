@@ -8,7 +8,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectMemberAdd, ProjectUpdate
 
 
 def get_projects(
@@ -144,3 +144,62 @@ def get_project_members(
             )
 
     return members
+
+
+def add_project_member(
+    db: Session,
+    project: Project,
+    member_in: ProjectMemberAdd,
+) -> ProjectMember:
+    """Thêm thành viên vào dự án (chỉ OWNER, kiểm tra user tồn tại và chống trùng)."""
+    user = db.scalar(select(User).where(User.id == member_in.user_id))
+    if not user:
+        raise NotFoundError("Không tìm thấy người dùng.")
+
+    if user.id == project.owner_id:
+        raise ValueError("Người dùng này đã là chủ sở hữu (OWNER) của dự án.")
+
+    existing = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == member_in.user_id,
+        )
+    )
+    if existing:
+        raise ValueError("Người dùng đã là thành viên của dự án.")
+
+    role_clean = (member_in.role or "MEMBER").strip().upper()
+    if role_clean not in ("OWNER", "MANAGER", "MEMBER"):
+        raise ValueError("Role không hợp lệ (chỉ chấp nhận OWNER, MANAGER, MEMBER).")
+
+    new_member = ProjectMember(
+        project_id=project.id,
+        user_id=member_in.user_id,
+        role=role_clean,
+    )
+    db.add(new_member)
+    db.commit()
+    db.refresh(new_member)
+    return new_member
+
+
+def remove_project_member(
+    db: Session,
+    project: Project,
+    user_id: int,
+) -> None:
+    """Xóa thành viên khỏi dự án (chỉ OWNER, không được xóa OWNER)."""
+    if user_id == project.owner_id:
+        raise ValueError("Không thể xóa chủ sở hữu (OWNER) khỏi dự án.")
+
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    if not member:
+        raise NotFoundError("Thành viên không tồn tại trong dự án.")
+
+    db.delete(member)
+    db.commit()

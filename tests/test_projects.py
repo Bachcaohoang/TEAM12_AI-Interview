@@ -276,3 +276,69 @@ def test_get_project_members_not_found():
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 404
+
+
+    # ==========================================
+# TESTS CHO TASK TB8ED76: VALIDATION & 404 PROJECT/USER
+# ==========================================
+
+
+def test_create_project_blank_or_too_long_name():
+    """15. Tên project chỉ chứa khoảng trắng hoặc vượt 255 ký tự -> Trả về 422."""
+    token = create_test_token("owner@test.com")
+
+    # Tên toàn khoảng trắng
+    res_blank = client.post(
+        "/projects",
+        json={"name": "     ", "description": "Tên toàn dấu cách"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_blank.status_code == 422
+
+    # Tên vượt quá 255 ký tự
+    res_long = client.post(
+        "/projects",
+        json={"name": "A" * 256, "description": "Tên quá dài"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_long.status_code == 422
+
+
+def test_update_project_blank_name_and_not_found():
+    """16. Cập nhật project không tồn tại (404) hoặc tên trống (422)."""
+    token = create_test_token("owner@test.com")
+
+    res_not_found = client.put(
+        "/projects/9999",
+        json={"name": "Tên hợp lệ"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_not_found.status_code == 404
+
+    res_blank = client.put(
+        "/projects/1",
+        json={"name": "   "},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_blank.status_code == 422
+
+
+def test_add_member_nonexistent_project_or_user():
+    """17. Thêm member vào project không tồn tại hoặc user_id không tồn tại -> Trả về 404."""
+    token = create_test_token("owner@test.com")
+
+    # Project không tồn tại
+    res_no_proj = client.post(
+        "/projects/9999/members",
+        json={"user_id": 2, "role": "MEMBER"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_no_proj.status_code == 404
+
+    # User không tồn tại
+    res_no_user = client.post(
+        "/projects/1/members",
+        json={"user_id": 99999, "role": "MEMBER"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_no_user.status_code == 404

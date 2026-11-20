@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProjectBase(BaseModel):
@@ -53,3 +53,36 @@ class ProjectMemberItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 ProjectResponse = ProjectRead
+
+class ProjectBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    status: Optional[str] = Field("in_progress", description="pending, in_progress, completed, cancelled")
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_blank(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Tên dự án không được để trống hoặc chỉ chứa khoảng trắng.")
+        return stripped
+
+
+class ProjectCreate(ProjectBase):
+    pass
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    status: Optional[str] = Field(None, description="pending, in_progress, completed, cancelled")
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_blank(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            stripped = v.strip()
+            if not stripped:
+                raise ValueError("Tên dự án không được để trống hoặc chỉ chứa khoảng trắng.")
+            return stripped
+        return v
