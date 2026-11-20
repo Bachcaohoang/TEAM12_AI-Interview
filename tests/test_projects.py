@@ -342,3 +342,56 @@ def test_add_member_nonexistent_project_or_user():
         headers={"Authorization": f"Bearer {token}"},
     )
     assert res_no_user.status_code == 404
+
+
+
+# ==========================================
+# TESTS CHO TASK TB8ED79: SOFT DELETE PROJECT
+# ==========================================
+
+
+def test_soft_delete_project_preserves_data_in_db():
+    """18. Xóa mềm project (204): ẩn khỏi API (404/list) nhưng bản ghi vẫn còn trong DB với is_deleted=True & deleted_at."""
+    token = create_test_token("owner@test.com")
+
+    # Gọi DELETE /projects/1
+    del_res = client.delete(
+        "/projects/1",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert del_res.status_code == 204
+
+    # 1. Gọi GET /projects/1 sau khi xóa -> Trả về 404 Not Found
+    get_res = client.get(
+        "/projects/1",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert get_res.status_code == 404
+
+    # 2. Gọi GET /projects -> Không còn xuất hiện trong danh sách
+    list_res = client.get(
+        "/projects",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert list_res.status_code == 200
+    assert all(p["id"] != 1 for p in list_res.json())
+
+    # 3. Kiểm tra trực tiếp trong Database: bản ghi vẫn tồn tại, is_deleted=True, deleted_at != None
+    db = TestingSessionLocal()
+    try:
+        project_in_db = db.query(Project).filter(Project.id == 1).first()
+        assert project_in_db is not None
+        assert project_in_db.is_deleted is True
+        assert project_in_db.deleted_at is not None
+    finally:
+        db.close()
+
+
+def test_soft_delete_project_forbidden_non_owner():
+    """19. Người không phải chủ dự án gọi DELETE /projects/1 -> Trả về 403 Forbidden."""
+    token = create_test_token("member@test.com")
+    res = client.delete(
+        "/projects/1",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 403

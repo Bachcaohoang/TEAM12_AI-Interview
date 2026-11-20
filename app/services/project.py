@@ -1,5 +1,6 @@
 """Nghiệp vụ quản lý dự án."""
 
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -77,14 +78,16 @@ def update_project(
 
 
 def delete_project(db: Session, project: Project, current_user: User) -> None:
-    """Xóa dự án (yêu cầu là chủ dự án hoặc admin)."""
+    """Xóa mềm dự án (giữ lại dữ liệu trong DB, cập nhật is_deleted và deleted_at)."""
     if current_user.role != "admin" and project.owner_id != current_user.id:
         raise PermissionDeniedError("Bạn không có quyền xóa dự án này.")
 
-    db.delete(project)
+    project.is_deleted = True
+    project.deleted_at = datetime.now(timezone.utc)
     db.commit()
+    db.refresh(project)
 
-
+    
 def get_project_members(
     db: Session,
     project_id: int,
@@ -203,3 +206,39 @@ def remove_project_member(
 
     db.delete(member)
     db.commit()
+
+
+def get_projects(
+    db: Session,
+    current_user: User,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+) -> list[Project]:
+    """
+    Lấy danh sách dự án chưa bị xóa mềm:
+    - Nếu admin hoặc manager: xem được tất cả các dự án trong hệ thống.
+    - Nếu user thông thường: xem các dự án do chính mình tạo/sở hữu.
+    """
+    query = select(Project).where(Project.is_deleted.is_(False))
+    if current_user.role not in ("admin", "manager"):
+        query = query.where(Project.owner_id == current_user.id)
+
+    if search:
+        query = query.where(Project.name.ilike(f"%{search.strip()}%"))
+    if status:
+        query = query.where(Project.status == status.strip())
+
+    query = query.offset(skip).limit(limit).order_by(Project.id.desc())
+    return list(db.scalars(query).all())
+
+
+def get_project_by_id(db: Session, project_id: int) -> Optional[Project]:
+    """Tìm dự án theo ID (bỏ qua dự án đã xóa mềm)."""
+    return db.scalar(
+        select(Project).where(
+            Project.id == project_id,
+            Project.is_deleted.is_(False),
+        )
+    )
