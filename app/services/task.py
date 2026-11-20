@@ -49,10 +49,15 @@ def is_user_project_member(db: Session, project: Project, user: User) -> bool:
 def check_project_access(db: Session, project_id: int, current_user: User) -> Project:
     """
     Kiểm tra sự tồn tại của dự án và quyền truy cập của người dùng hiện tại.
-    - Raise NotFoundError nếu dự án không tồn tại.
+    - Raise NotFoundError nếu dự án không tồn tại hoặc đã xóa mềm.
     - Raise PermissionDeniedError nếu người dùng không phải thành viên dự án.
     """
-    project = db.scalar(select(Project).where(Project.id == project_id))
+    project = db.scalar(
+        select(Project).where(
+            Project.id == project_id,
+            Project.is_deleted.is_(False),
+        )
+    )
     if not project:
         raise NotFoundError(f"Không tìm thấy dự án với ID {project_id}.")
 
@@ -301,11 +306,11 @@ def update_task(
     current_user: User,
 ) -> Task:
     """
-    Cập nhật một phần công việc (PATCH):
-    - Kiểm tra task tồn tại (NotFoundError -> 404).
-    - Kiểm tra user thuộc project của task (PermissionDeniedError -> 403).
-    - Kiểm tra workflow chuyển trạng thái hợp lệ, priority, due_date và assignee thuộc project.
-    - Chỉ cập nhật các trường được gửi lên (exclude_unset=True), không ghi đè trường không gửi lên.
+    Cập nhật một phần công việc (PATCH) với phân quyền chặt chẽ (chống IDOR):
+    - Người ngoài dự án -> 403 Forbidden.
+    - Owner / Manager dự án (hoặc Admin) -> được sửa mọi trường (kể cả giao việc assignee_id).
+    - Assignee (người được giao task) -> chỉ được cập nhật trạng thái/mô tả công việc của mình, không được đổi assignee_id/title/priority/due_date.
+    - Member thường khác (không phải Assignee) -> 403 Forbidden.
     """
     task = db.scalar(select(Task).where(Task.id == task_id))
     if not task:
@@ -313,7 +318,24 @@ def update_task(
 
     project = check_project_access(db, task.project_id, current_user)
 
+    is_manager_or_owner = can_delete_project_task(db, project, current_user)
+    is_assignee = task.assignee_id == current_user.id
+
+    if not is_manager_or_owner and not is_assignee:
+        raise PermissionDeniedError(
+            "Chỉ chủ dự án, quản lý hoặc người được giao việc (assignee) mới có quyền cập nhật công việc này."
+        )
+
     update_data = task_in.model_dump(exclude_unset=True)
+
+    # Nếu chỉ là Assignee thường (không phải Owner/Manager), chặn sửa các trường quản trị
+    if not is_manager_or_owner:
+        restricted_fields = {"title", "priority", "due_date", "assignee_id"}
+        forbidden_sent = restricted_fields.intersection(update_data.keys())
+        if forbidden_sent:
+            raise PermissionDeniedError(
+                "Người được giao việc (assignee) chỉ được cập nhật trạng thái hoặc mô tả công việc."
+            )
 
     if "title" in update_data:
         raw_title = update_data["title"]
@@ -397,7 +419,12 @@ def delete_task(db: Session, task_id: int, current_user: User) -> None:
     if not task:
         raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
 
-    project = db.scalar(select(Project).where(Project.id == task.project_id))
+    project = db.scalar(
+        select(Project).where(
+            Project.id == task.project_id,
+            Project.is_deleted.is_(False),
+        )
+    )
     if not project:
         raise NotFoundError(f"Không tìm thấy dự án với ID {task.project_id}.")
 
