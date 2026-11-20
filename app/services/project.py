@@ -1,11 +1,12 @@
 """Nghiệp vụ quản lý dự án."""
 
 from typing import Optional
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate
 
@@ -82,3 +83,64 @@ def delete_project(db: Session, project: Project, current_user: User) -> None:
 
     db.delete(project)
     db.commit()
+
+
+def get_project_members(
+    db: Session,
+    project_id: int,
+    current_user: User,
+) -> list[dict]:
+    """Lấy danh sách thành viên và role trong dự án."""
+    project = get_project_by_id(db, project_id)
+    if not project:
+        raise NotFoundError("Project không tồn tại.")
+
+    membership = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == current_user.id,
+        )
+    )
+    is_owner = project.owner_id == current_user.id
+    is_admin = current_user.role == "admin"
+
+    if not membership and not is_owner and not is_admin:
+        raise PermissionDeniedError("Bạn không có quyền xem danh sách thành viên của project này.")
+
+    rows = db.execute(
+        select(ProjectMember, User)
+        .join(User, ProjectMember.user_id == User.id)
+        .where(ProjectMember.project_id == project_id)
+    ).all()
+
+    members: list[dict] = []
+    seen_user_ids: set[int] = set()
+
+    for member, user in rows:
+        seen_user_ids.add(member.user_id)
+        members.append(
+            {
+                "user_id": member.user_id,
+                "role": member.role,
+                "email": getattr(user, "email", None),
+                "full_name": getattr(user, "full_name", None),
+                "joined_at": getattr(member, "joined_at", getattr(member, "created_at", None)),
+            }
+        )
+
+    # Đảm bảo chủ sở hữu dự án luôn có mặt trong danh sách trả về
+    if project.owner_id and project.owner_id not in seen_user_ids:
+        owner = db.scalar(select(User).where(User.id == project.owner_id))
+        if owner:
+            members.insert(
+                0,
+                {
+                    "user_id": owner.id,
+                    "role": "OWNER",
+                    "email": getattr(owner, "email", None),
+                    "full_name": getattr(owner, "full_name", None),
+                    "joined_at": getattr(project, "created_at", None),
+                },
+            )
+
+    return members

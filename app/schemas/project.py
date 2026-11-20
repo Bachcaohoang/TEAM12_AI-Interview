@@ -2,8 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
-from app.schemas.user import UserResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectBase(BaseModel):
@@ -29,3 +28,28 @@ class ProjectRead(ProjectBase):
     owner_id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class ProjectMemberAdd(BaseModel):
+    user_id: int = Field(..., gt=0)
+    role: str = Field("MEMBER", description="OWNER, MANAGER, MEMBER")
+
+
+class ProjectMemberResponse(BaseModel):
+    project_id: int
+    user_id: int
+    role: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectMemberItemResponse(BaseModel):
+    user_id: int
+    role: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    joined_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+ProjectResponse = ProjectRead

@@ -10,24 +10,31 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
+import app.db.session as db_session_module
 from app.core.rate_limiter import limiter
 from app.db.base import Base
 from app.dependencies.get_db import get_db
 from app.main import app
+from app.models.project import Project  # noqa: F401
+from app.models.project_member import ProjectMember  # noqa: F401
+from app.models.task import Task  # noqa: F401
+from app.models.user import User  # noqa: F401
 
-# Sử dụng SQLite in-memory tập trung cho toàn bộ test suite
-TEST_DATABASE_URL = "sqlite:///:memory:"
+# Dùng file SQLite tạm để dùng chung an toàn giữa main thread và worker thread của TestClient
+TEST_DB_FILE = "./test_suite.db"
+TEST_DATABASE_URL = f"sqlite:///{TEST_DB_FILE}"
 
 test_engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(
     bind=test_engine, autoflush=False, autocommit=False
 )
+
+db_session_module.engine = test_engine
+db_session_module.SessionLocal = TestingSessionLocal
 
 
 def override_get_db():
@@ -49,6 +56,34 @@ def setup_database():
     yield
     Base.metadata.drop_all(bind=test_engine)
     limiter.reset()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_db_file():
+    """Xóa file test_suite.db sau khi chạy xong toàn bộ test suite."""
+    yield
+    test_engine.dispose()
+    try:
+        if os.path.exists(TEST_DB_FILE):
+            os.remove(TEST_DB_FILE)
+    except PermissionError:
+        pass
+
+
+@pytest.fixture
+def db():
+    """Cung cấp session database cho các bài test cần thao tác trực tiếp DB."""
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture
+def db_session(db):
+    """Alias cho fixture db."""
+    return db
 
 
 @pytest.fixture

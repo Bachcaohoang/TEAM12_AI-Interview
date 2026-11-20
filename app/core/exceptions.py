@@ -1,53 +1,53 @@
-"""Ngoại lệ nghiệp vụ dùng chung, có thể được ánh xạ thành HTTP response."""
+"""Các lớp ngoại lệ (Exception) dùng chung toàn hệ thống."""
+
+from fastapi import HTTPException, status
 
 
-class NotFoundError(Exception):
-    """Đối tượng được yêu cầu không tồn tại."""
+# --- Các Exception chuẩn dùng trong Services & Routers ---
+class AppException(Exception):
+    """Lớp cơ sở cho các lỗi nghiệp vụ."""
+
+    def __init__(self, message: str, status_code: int = status.HTTP_400_BAD_REQUEST):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(message)
 
 
+class AuthenticationError(AppException):
+    def __init__(self, message: str = "Thông tin đăng nhập không hợp lệ."):
+        super().__init__(message, status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+class PermissionDeniedError(AppException):
+    def __init__(self, message: str = "Bạn không có quyền thực hiện thao tác này."):
+        super().__init__(message, status_code=status.HTTP_403_FORBIDDEN)
+
+
+class NotFoundError(AppException):
+    def __init__(self, message: str = "Không tìm thấy dữ liệu yêu cầu."):
+        super().__init__(message, status_code=status.HTTP_404_NOT_FOUND)
+
+
+class DuplicateError(AppException):
+    def __init__(self, message: str = "Dữ liệu đã tồn tại trong hệ thống."):
+        super().__init__(message, status_code=status.HTTP_409_CONFLICT)
+
+
+# --- Các HTTPException tương thích ngược với code cũ ---
 class InvalidCredentialsException(HTTPException):
-    """Lỗi sai Email hoặc Mật khẩu khi đăng nhập."""
-    def __init__(self):
+    def __init__(self, detail: str = "Email hoặc mật khẩu không chính xác"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email hoặc mật khẩu không chính xác",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
 
-class InvalidTokenException(HTTPException):
-    """Lỗi Token không hợp lệ hoặc sai định dạng."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token xác thực không hợp lệ",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+class ProjectNotFoundException(HTTPException):
+    def __init__(self, detail: str = "Không tìm thấy dự án"):
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
-class ExpiredTokenException(HTTPException):
-    """Lỗi Token đã hết hạn."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-class InactiveUserException(HTTPException):
-    """Lỗi Tài khoản đã bị vô hiệu hóa / khóa."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản của bạn đã bị vô hiệu hóa",
-        )
-
-
-class EmailAlreadyExistsException(HTTPException):
-    """Lỗi Đăng ký trùng Email."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email này đã được sử dụng trên hệ thống",
-        )
+class NotProjectMemberException(HTTPException):
+    def __init__(self, detail: str = "Bạn không phải là thành viên của dự án này"):
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
