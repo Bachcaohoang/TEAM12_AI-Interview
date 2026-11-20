@@ -27,6 +27,5 @@ class ProjectRead(ProjectBase):
 
     id: int
     owner_id: int
-    created_at: datetime
-    updated_at: datetime
-    owner: Optional[UserResponse] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

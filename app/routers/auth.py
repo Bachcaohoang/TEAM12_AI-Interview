@@ -2,11 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AuthenticationError, DuplicateError, NotFoundError
+from app.core.rate_limiter import (
+    check_login_security,
+    check_rate_limit,
+    handle_login_failure,
+    handle_login_success,
+)
 from app.core.security import verify_password_reset_token
 from app.dependencies.auth import get_current_user
 from app.dependencies.get_db import get_db
@@ -34,19 +40,24 @@ def auth_health() -> dict[str, str]:
     "/register",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Đăng ký tài khoản người dùng mới (Task 9 - Chính)",
+    summary="Đăng ký tài khoản người dùng mới (Task 9 - Chính & Task TB8ED5B: Rate limit)",
 )
 def register(
     user_in: UserCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
     """
     Đăng ký tài khoản:
+    - Giới hạn tần suất gọi: tối đa 3 requests/phút từ 1 IP (chống spam/brute-force)
     - Kiểm tra email chưa tồn tại
     - Kiểm tra độ mạnh mật khẩu (ít nhất 6 ký tự)
     - Băm mật khẩu an toàn bằng bcrypt
     - Mặc định vai trò là 'user' nếu không chỉ định
     """
+    # 1. Giới hạn tần suất đăng ký (tối đa 3 lần / 60 giây)
+    check_rate_limit(request, prefix="register", max_requests=3, window_seconds=60)
+
     try:
         new_user = user_service.create_user(db, user_in)
         return new_user
@@ -65,21 +76,28 @@ def register(
 @router.post(
     "/login",
     response_model=TokenResponse,
-    summary="Đăng nhập nhận Access Token + Refresh Token (Form data / Swagger UI) (Task 6 - Chính & Task 10 - Bonus)",
+    summary="Đăng nhập nhận Access Token + Refresh Token (Form data / Swagger UI) (Task 6 - Chính & TB8ED5B: Anti brute-force)",
 )
 def login_form(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """
     Đăng nhập tương thích chuẩn OAuth2 Password Request Form (tự động tích hợp nút Authorize trên Swagger UI):
+    - Kiểm tra giới hạn tần suất và cơ chế chống brute-force (khóa sau 5 lần nhập sai)
     - username: truyền email của tài khoản
     - password: mật khẩu tài khoản
     """
+    # 1. Kiểm tra rate limit và brute-force lockout
+    check_login_security(request, email=form_data.username, max_requests=10, window_seconds=60)
+
     user = auth_service.authenticate_user(
         db, email=form_data.username, password=form_data.password
     )
     if not user:
+        # Ghi nhận thất bại (tự động kích hoạt khóa tạm thời nếu đạt 5 lần)
+        handle_login_failure(request, email=form_data.username, max_failures=5, lockout_seconds=60)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email hoặc mật khẩu không chính xác",
@@ -90,23 +108,32 @@ def login_form(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản người dùng đã bị vô hiệu hóa",
         )
+
+    # Đăng nhập thành công -> Reset bộ đếm thất bại
+    handle_login_success(request, email=form_data.username)
     return auth_service.create_user_tokens(user)
 
 
 @router.post(
     "/login-json",
     response_model=TokenResponse,
-    summary="Đăng nhập nhận Access Token + Refresh Token bằng JSON body (Task 6 - Chính)",
+    summary="Đăng nhập nhận Access Token + Refresh Token bằng JSON body (Task 6 - Chính & TB8ED5B: Anti brute-force)",
 )
 def login_json(
     credentials: LoginRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """Đăng nhập bằng JSON body `{'email': '...', 'password': '...'}`."""
+    """Đăng nhập bằng JSON body `{'email': '...', 'password': '...'}` kèm cơ chế chống brute-force."""
+    # 1. Kiểm tra rate limit và brute-force lockout
+    check_login_security(request, email=credentials.email, max_requests=10, window_seconds=60)
+
     user = auth_service.authenticate_user(
         db, email=credentials.email, password=credentials.password
     )
     if not user:
+        # Ghi nhận thất bại (tự động kích hoạt khóa tạm thời nếu đạt 5 lần)
+        handle_login_failure(request, email=credentials.email, max_failures=5, lockout_seconds=60)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email hoặc mật khẩu không chính xác",
@@ -117,6 +144,9 @@ def login_json(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản người dùng đã bị vô hiệu hóa",
         )
+
+    # Đăng nhập thành công -> Reset bộ đếm thất bại
+    handle_login_success(request, email=credentials.email)
     return auth_service.create_user_tokens(user)
 
 
