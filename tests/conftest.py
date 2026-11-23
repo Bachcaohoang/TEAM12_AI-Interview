@@ -18,6 +18,7 @@ from app.dependencies.get_db import get_db
 from app.main import app
 from app.models.project import Project  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 from app.models.task import Task  # noqa: F401
 from app.models.user import User  # noqa: F401
 

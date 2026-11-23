@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.dependencies.get_db import get_db
 from app.models.project import Project
 from app.models.user import User
-from app.routers import auth, projects, tasks, users
+from app.routers import auth, notifications, projects, tasks, users
 
 app = FastAPI(title="Hệ thống quản lý dự án & AI Interview", version="0.1.0")
 
@@ -18,6 +18,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
+app.include_router(notifications.router)
 
 
 
