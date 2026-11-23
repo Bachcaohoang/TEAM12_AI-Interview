@@ -86,3 +86,29 @@ class ProjectUpdate(BaseModel):
                 raise ValueError("Tên dự án không được để trống hoặc chỉ chứa khoảng trắng.")
             return stripped
         return v
+
+class TaskStatusBreakdown(BaseModel):
+    TODO: int = 0
+    IN_PROGRESS: int = 0
+    DONE: int = 0
+
+
+class AssigneeTaskSummary(BaseModel):
+    assignee_id: Optional[int] = None
+    full_name: str
+    email: Optional[str] = None
+    total_tasks: int = 0
+    todo: int = 0
+    in_progress: int = 0
+    done: int = 0
+    completion_rate: float = 0.0
+
+
+class ProjectDashboardResponse(BaseModel):
+    project_id: int
+    project_name: str
+    total_tasks: int
+    completed_tasks: int
+    completion_rate: float
+    tasks_by_status: TaskStatusBreakdown
+    tasks_by_assignee: list[AssigneeTaskSummary]

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.task import Task
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectMemberAdd, ProjectUpdate
 
@@ -242,3 +243,87 @@ def get_project_by_id(db: Session, project_id: int) -> Optional[Project]:
             Project.is_deleted.is_(False),
         )
     )
+
+def get_project_dashboard(
+    db: Session,
+    project_id: int,
+    current_user: User,
+) -> dict:
+    """Thống kê tỷ lệ hoàn thành task, số lượng task theo trạng thái và theo assignee của dự án."""
+    project = get_project_by_id(db, project_id)
+    if not project:
+        raise NotFoundError("Project không tồn tại.")
+
+    membership = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == current_user.id,
+        )
+    )
+    is_owner = project.owner_id == current_user.id
+    is_admin = (current_user.role or "").strip().upper() == "ADMIN"
+
+    if not membership and not is_owner and not is_admin:
+        raise PermissionDeniedError("Bạn không có quyền xem dashboard của dự án này.")
+
+    tasks = list(db.scalars(select(Task).where(Task.project_id == project_id)).all())
+    total_tasks = len(tasks)
+
+    status_counts = {"TODO": 0, "IN_PROGRESS": 0, "DONE": 0}
+    assignee_buckets: dict[Optional[int], dict] = {}
+
+    # Lấy thông tin user cho các assignee_id xuất hiện trong danh sách task
+    assignee_ids = {t.assignee_id for t in tasks if t.assignee_id is not None}
+    users_map: dict[int, User] = {}
+    if assignee_ids:
+        users = list(db.scalars(select(User).where(User.id.in_(assignee_ids))).all())
+        users_map = {u.id: u for u in users}
+
+    for task in tasks:
+        st = (task.status or "TODO").strip().upper()
+        if st in status_counts:
+            status_counts[st] += 1
+
+        aid = task.assignee_id
+        if aid not in assignee_buckets:
+            user_obj = users_map.get(aid) if aid is not None else None
+            assignee_buckets[aid] = {
+                "assignee_id": aid,
+                "full_name": user_obj.full_name if user_obj else "Chưa phân công",
+                "email": user_obj.email if user_obj else None,
+                "total_tasks": 0,
+                "todo": 0,
+                "in_progress": 0,
+                "done": 0,
+            }
+
+        bucket = assignee_buckets[aid]
+        bucket["total_tasks"] += 1
+        if st == "TODO":
+            bucket["todo"] += 1
+        elif st == "IN_PROGRESS":
+            bucket["in_progress"] += 1
+        elif st == "DONE":
+            bucket["done"] += 1
+
+    completed_tasks = status_counts["DONE"]
+    completion_rate = round((completed_tasks / total_tasks) * 100, 2) if total_tasks > 0 else 0.0
+
+    tasks_by_assignee: list[dict] = []
+    for bucket in assignee_buckets.values():
+        b_total = bucket["total_tasks"]
+        b_rate = round((bucket["done"] / b_total) * 100, 2) if b_total > 0 else 0.0
+        tasks_by_assignee.append({**bucket, "completion_rate": b_rate})
+
+    # Sắp xếp assignee có nhiều task nhất lên đầu, nhóm "Chưa phân công" xuống cuối
+    tasks_by_assignee.sort(key=lambda x: (x["assignee_id"] is None, -x["total_tasks"]))
+
+    return {
+        "project_id": project.id,
+        "project_name": project.name,
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks,
+        "completion_rate": completion_rate,
+        "tasks_by_status": status_counts,
+        "tasks_by_assignee": tasks_by_assignee,
+    }
