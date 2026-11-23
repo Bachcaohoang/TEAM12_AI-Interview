@@ -1,6 +1,6 @@
-"""Router bình luận công việc."""
+"""Router bình luận công việc (Task Comments)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, PermissionDeniedError
@@ -15,7 +15,7 @@ from app.schemas.comment import (
 )
 from app.services import comment as comment_service
 
-router = APIRouter(tags=["comments"])
+router = APIRouter(tags=["Comments"])
 
 
 @router.post(
@@ -23,10 +23,17 @@ router = APIRouter(tags=["comments"])
     response_model=CommentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Tạo bình luận cho công việc",
+    description="Thêm một bình luận mới vào công việc chỉ định. Người dùng phải là thành viên của dự án chứa công việc.",
+    responses={
+        201: {"description": "Tạo bình luận thành công."},
+        400: {"description": "Nội dung bình luận rỗng hoặc không hợp lệ."},
+        403: {"description": "Người dùng không thuộc dự án chứa công việc."},
+        404: {"description": "Không tìm thấy công việc."},
+    },
 )
 def create_task_comment(
-    task_id: int,
-    comment_in: CommentCreate,
+    task_id: int = Path(..., gt=0, description="ID của công việc cần bình luận"),
+    comment_in: CommentCreate = ...,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -45,12 +52,20 @@ def create_task_comment(
 @router.get(
     "/tasks/{task_id}/comments",
     response_model=PaginatedCommentResponse,
-    summary="Danh sách bình luận của công việc (có phân trang)",
+    status_code=status.HTTP_200_OK,
+    summary="Lấy danh sách bình luận của công việc",
+    description="Lấy danh sách bình luận được sắp xếp theo thời gian tạo kèm phân trang (offset/limit).",
+    responses={
+        200: {"description": "Lấy danh sách bình luận thành công."},
+        400: {"description": "Tham số phân trang không hợp lệ."},
+        403: {"description": "Người dùng không thuộc dự án chứa công việc."},
+        404: {"description": "Không tìm thấy công việc."},
+    },
 )
 def list_task_comments(
-    task_id: int,
-    page: int = Query(1, description="Trang hiện tại (>= 1)"),
-    page_size: int = Query(10, description="Số bản ghi mỗi trang (1-100)"),
+    task_id: int = Path(..., gt=0, description="ID của công việc"),
+    page: int = Query(1, ge=1, description="Trang hiện tại (>= 1)"),
+    page_size: int = Query(10, ge=1, le=100, description="Số bản ghi mỗi trang (1-100)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -73,10 +88,17 @@ def list_task_comments(
 @router.get(
     "/comments/{comment_id}",
     response_model=CommentResponse,
+    status_code=status.HTTP_200_OK,
     summary="Xem chi tiết một bình luận",
+    description="Lấy thông tin chi tiết của bình luận theo ID. Yêu cầu quyền truy cập vào dự án chứa bình luận.",
+    responses={
+        200: {"description": "Lấy chi tiết bình luận thành công."},
+        403: {"description": "Không có quyền xem bình luận này."},
+        404: {"description": "Bình luận không tồn tại."},
+    },
 )
 def get_comment(
-    comment_id: int,
+    comment_id: int = Path(..., gt=0, description="ID của bình luận"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -91,11 +113,19 @@ def get_comment(
 @router.put(
     "/comments/{comment_id}",
     response_model=CommentResponse,
-    summary="Cập nhật bình luận (chủ sở hữu hoặc ADMIN)",
+    status_code=status.HTTP_200_OK,
+    summary="Cập nhật nội dung bình luận",
+    description="Chỉnh sửa nội dung bình luận. Chỉ tác giả bình luận hoặc Admin hệ thống mới có quyền sửa.",
+    responses={
+        200: {"description": "Cập nhật bình luận thành công."},
+        400: {"description": "Nội dung bình luận rỗng hoặc không hợp lệ."},
+        403: {"description": "Không có quyền sửa bình luận của người khác."},
+        404: {"description": "Bình luận không tồn tại."},
+    },
 )
 def update_comment(
-    comment_id: int,
-    comment_in: CommentUpdate,
+    comment_id: int = Path(..., gt=0, description="ID của bình luận cần sửa"),
+    comment_in: CommentUpdate = ...,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -114,10 +144,16 @@ def update_comment(
 @router.delete(
     "/comments/{comment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Xóa bình luận (chủ sở hữu hoặc ADMIN)",
+    summary="Xóa bình luận",
+    description="Xóa bình luận theo ID. Chỉ tác giả bình luận hoặc Admin hệ thống mới có quyền xóa.",
+    responses={
+        204: {"description": "Xóa bình luận thành công."},
+        403: {"description": "Không có quyền xóa bình luận của người khác."},
+        404: {"description": "Bình luận không tồn tại."},
+    },
 )
 def delete_comment(
-    comment_id: int,
+    comment_id: int = Path(..., gt=0, description="ID của bình luận cần xóa"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
