@@ -81,7 +81,7 @@ def get_auth_headers(client: TestClient, email: str) -> dict[str, str]:
 
 def test_partial_update_preserves_omitted_fields(client, task_update_setup):
     """Chỉ gửi status và title mới -> cập nhật đúng 2 trường đó, giữ nguyên các trường không gửi lên."""
-    headers = get_auth_headers(client, "member_upd@test.com")
+    headers = get_auth_headers(client, "owner_upd@test.com")
     task_id = task_update_setup["task_id"]
 
     res = client.patch(
@@ -101,19 +101,20 @@ def test_partial_update_preserves_omitted_fields(client, task_update_setup):
 
 def test_update_task_invalid_status_or_blank_title_returns_400(client, task_update_setup):
     """Gửi giá trị status không hợp lệ hoặc title chỉ có khoảng trắng trả về 400 Bad Request."""
-    headers = get_auth_headers(client, "member_upd@test.com")
+    member_headers = get_auth_headers(client, "member_upd@test.com")
+    owner_headers = get_auth_headers(client, "owner_upd@test.com")
     task_id = task_update_setup["task_id"]
 
     res_status = client.patch(
         f"/tasks/{task_id}",
-        headers=headers,
+        headers=member_headers,
         json={"status": "INVALID_STATUS"},
     )
     assert res_status.status_code == 400
 
     res_title = client.patch(
         f"/tasks/{task_id}",
-        headers=headers,
+        headers=owner_headers,
         json={"title": "   "},
     )
     assert res_title.status_code == 400
