@@ -28,10 +28,15 @@ from app.schemas.user import (
 from app.services import auth as auth_service
 from app.services import user as user_service
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.get("/health", summary="Kiểm tra trạng thái router auth")
+@router.get(
+    "/health",
+    summary="Kiểm tra trạng thái router Auth",
+    description="Kiểm tra router xác thực sẵn sàng nhận yêu cầu.",
+    status_code=status.HTTP_200_OK,
+)
 def auth_health() -> dict[str, str]:
     return {"message": "Auth router is ready"}
 
@@ -40,22 +45,26 @@ def auth_health() -> dict[str, str]:
     "/register",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Đăng ký tài khoản người dùng mới (Task 9 - Chính & Task TB8ED5B: Rate limit)",
+    summary="Đăng ký tài khoản người dùng mới",
+    description="""
+Đăng ký tài khoản người dùng mới:
+* Giới hạn tần suất: tối đa 3 requests/phút từ 1 địa chỉ IP (chống spam).
+* Kiểm tra tính duy nhất của email.
+* Kiểm tra độ mạnh mật khẩu (tối thiểu 6 ký tự).
+* Băm mật khẩu an toàn bằng bcrypt.
+    """,
+    responses={
+        201: {"description": "Đăng ký tài khoản thành công."},
+        400: {"description": "Email đã được sử dụng."},
+        422: {"description": "Dữ liệu hoặc mật khẩu không hợp lệ."},
+        429: {"description": "Gửi yêu cầu quá nhanh, vượt giới hạn rate limit."},
+    },
 )
 def register(
     user_in: UserCreate,
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    """
-    Đăng ký tài khoản:
-    - Giới hạn tần suất gọi: tối đa 3 requests/phút từ 1 IP (chống spam/brute-force)
-    - Kiểm tra email chưa tồn tại
-    - Kiểm tra độ mạnh mật khẩu (ít nhất 6 ký tự)
-    - Băm mật khẩu an toàn bằng bcrypt
-    - Mặc định vai trò là 'user' nếu không chỉ định
-    """
-    # 1. Giới hạn tần suất đăng ký (tối đa 3 lần / 60 giây)
     check_rate_limit(request, prefix="register", max_requests=3, window_seconds=60)
 
     try:
@@ -76,27 +85,27 @@ def register(
 @router.post(
     "/login",
     response_model=TokenResponse,
-    summary="Đăng nhập nhận Access Token + Refresh Token (Form data / Swagger UI) (Task 6 - Chính & TB8ED5B: Anti brute-force)",
+    status_code=status.HTTP_200_OK,
+    summary="Đăng nhập nhận JWT Token (Form Data / Swagger UI)",
+    description="Đăng nhập OAuth2 Password Flow chuẩn Form Data để tích hợp trực tiếp với nút Authorize trên Swagger UI. Kèm cơ chế khóa tạm thời nếu nhập sai liên tiếp 5 lần.",
+    responses={
+        200: {"description": "Đăng nhập thành công, trả về Access Token & Refresh Token."},
+        401: {"description": "Email hoặc mật khẩu không chính xác."},
+        403: {"description": "Tài khoản người dùng đã bị vô hiệu hóa."},
+        429: {"description": "Vượt quá giới hạn thử đăng nhập hoặc tài khoản đang bị khóa tạm thời."},
+    },
 )
 def login_form(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """
-    Đăng nhập tương thích chuẩn OAuth2 Password Request Form (tự động tích hợp nút Authorize trên Swagger UI):
-    - Kiểm tra giới hạn tần suất và cơ chế chống brute-force (khóa sau 5 lần nhập sai)
-    - username: truyền email của tài khoản
-    - password: mật khẩu tài khoản
-    """
-    # 1. Kiểm tra rate limit và brute-force lockout
     check_login_security(request, email=form_data.username, max_requests=10, window_seconds=60)
 
     user = auth_service.authenticate_user(
         db, email=form_data.username, password=form_data.password
     )
     if not user:
-        # Ghi nhận thất bại (tự động kích hoạt khóa tạm thời nếu đạt 5 lần)
         handle_login_failure(request, email=form_data.username, max_failures=5, lockout_seconds=60)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -109,7 +118,6 @@ def login_form(
             detail="Tài khoản người dùng đã bị vô hiệu hóa",
         )
 
-    # Đăng nhập thành công -> Reset bộ đếm thất bại
     handle_login_success(request, email=form_data.username)
     return auth_service.create_user_tokens(user)
 
@@ -117,22 +125,27 @@ def login_form(
 @router.post(
     "/login-json",
     response_model=TokenResponse,
-    summary="Đăng nhập nhận Access Token + Refresh Token bằng JSON body (Task 6 - Chính & TB8ED5B: Anti brute-force)",
+    status_code=status.HTTP_200_OK,
+    summary="Đăng nhập nhận JWT Token bằng JSON Body",
+    description="Đăng nhập nhận cặp Access Token và Refresh Token bằng payload JSON. Tích hợp chống brute-force và rate limiting.",
+    responses={
+        200: {"description": "Đăng nhập thành công, trả về Access Token & Refresh Token."},
+        401: {"description": "Email hoặc mật khẩu không chính xác."},
+        403: {"description": "Tài khoản người dùng đã bị vô hiệu hóa."},
+        429: {"description": "Vượt quá giới hạn thử đăng nhập hoặc tài khoản đang bị khóa tạm thời."},
+    },
 )
 def login_json(
     credentials: LoginRequest,
     request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """Đăng nhập bằng JSON body `{'email': '...', 'password': '...'}` kèm cơ chế chống brute-force."""
-    # 1. Kiểm tra rate limit và brute-force lockout
     check_login_security(request, email=credentials.email, max_requests=10, window_seconds=60)
 
     user = auth_service.authenticate_user(
         db, email=credentials.email, password=credentials.password
     )
     if not user:
-        # Ghi nhận thất bại (tự động kích hoạt khóa tạm thời nếu đạt 5 lần)
         handle_login_failure(request, email=credentials.email, max_failures=5, lockout_seconds=60)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -145,7 +158,6 @@ def login_json(
             detail="Tài khoản người dùng đã bị vô hiệu hóa",
         )
 
-    # Đăng nhập thành công -> Reset bộ đếm thất bại
     handle_login_success(request, email=credentials.email)
     return auth_service.create_user_tokens(user)
 
@@ -153,16 +165,19 @@ def login_json(
 @router.post(
     "/refresh",
     response_model=TokenResponse,
-    summary="Lấy Access Token mới bằng Refresh Token (Task 10 - Bonus)",
+    status_code=status.HTTP_200_OK,
+    summary="Lấy cặp Token mới bằng Refresh Token",
+    description="Gia hạn phiên đăng nhập khi Access Token hết hạn bằng cách cung cấp Refresh Token hợp lệ.",
+    responses={
+        200: {"description": "Cấp mới token thành công."},
+        401: {"description": "Refresh token không hợp lệ hoặc đã hết hạn."},
+        404: {"description": "Người dùng không còn tồn tại."},
+    },
 )
 def refresh_token(
     payload: RefreshTokenRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """
-    Gia hạn phiên đăng nhập:
-    Gửi refresh_token hợp lệ để nhận lại cặp access_token và refresh_token mới.
-    """
     try:
         return auth_service.refresh_user_tokens(db, payload.refresh_token)
     except AuthenticationError as exc:
@@ -181,28 +196,34 @@ def refresh_token(
 @router.get(
     "/me",
     response_model=UserRead,
-    summary="Lấy thông tin người dùng hiện tại đang đăng nhập (Task 11 - Chính)",
+    status_code=status.HTTP_200_OK,
+    summary="Lấy thông tin người dùng hiện tại đang đăng nhập",
+    description="Truy xuất thông tin hồ sơ của người dùng sở hữu Access Token đang gửi trong header Authorization.",
+    responses={
+        200: {"description": "Lấy thông tin người dùng thành công."},
+        401: {"description": "Chưa đăng nhập / Token không hợp lệ."},
+    },
 )
 def get_current_user_info(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    """Trả về thông tin chi tiết của người dùng sở hữu access token hiện tại."""
     return current_user
 
 
 @router.post(
     "/forgot-password",
-    summary="Yêu cầu đặt lại mật khẩu khi quên (Task 2 - Bonus)",
+    status_code=status.HTTP_200_OK,
+    summary="Yêu cầu đặt lại mật khẩu khi quên",
+    description="Tạo mã Token đặt lại mật khẩu có thời hạn ngắn (15 phút) gửi tới email của tài khoản.",
+    responses={
+        200: {"description": "Tạo mã reset mật khẩu thành công."},
+        404: {"description": "Không tìm thấy tài khoản với email yêu cầu."},
+    },
 )
 def forgot_password(
     req: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """
-    Yêu cầu đặt lại mật khẩu:
-    Tạo reset token có thời hạn ngắn (15 phút).
-    Trả về thông báo và reset_token để phục vụ kiểm thử và mô phỏng gửi email.
-    """
     try:
         reset_token = auth_service.request_password_reset(db, req.email)
         return {
@@ -218,15 +239,18 @@ def forgot_password(
 
 @router.post(
     "/reset-password",
-    summary="Đặt lại mật khẩu mới bằng mã reset token (Task 2 - Bonus)",
+    status_code=status.HTTP_200_OK,
+    summary="Đặt lại mật khẩu mới bằng mã Reset Token",
+    description="Xác thực reset token và cập nhật mật khẩu mới cho tài khoản người dùng.",
+    responses={
+        200: {"description": "Đặt lại mật khẩu thành công."},
+        400: {"description": "Token không hợp lệ, hết hạn hoặc mật khẩu không đạt yêu cầu."},
+    },
 )
 def reset_password(
     req: ResetPasswordRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """
-    Xác thực reset token và cập nhật mật khẩu mới cho tài khoản.
-    """
     email = verify_password_reset_token(req.token)
     if not email:
         raise HTTPException(
@@ -245,18 +269,20 @@ def reset_password(
 
 @router.post(
     "/change-password",
-    summary="Đổi mật khẩu người dùng (Task 3 - Bonus)",
+    status_code=status.HTTP_200_OK,
+    summary="Đổi mật khẩu người dùng đang đăng nhập",
+    description="Đổi mật khẩu tài khoản hiện tại: yêu cầu mật khẩu cũ chính xác và mật khẩu mới tối thiểu 6 ký tự.",
+    responses={
+        200: {"description": "Đổi mật khẩu thành công."},
+        400: {"description": "Mật khẩu cũ không đúng, hoặc mật khẩu mới trùng mật khẩu cũ / không đạt yêu cầu."},
+        401: {"description": "Chưa đăng nhập / Token không hợp lệ."},
+    },
 )
 def change_password(
     change_req: PasswordChangeRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """
-    Đổi mật khẩu tài khoản đang đăng nhập:
-    - Yêu cầu mật khẩu cũ chính xác
-    - Mật khẩu mới tối thiểu 6 ký tự và không được trùng mật khẩu cũ
-    """
     try:
         user_service.change_user_password(db, current_user, change_req)
         return {"message": "Đổi mật khẩu thành công."}

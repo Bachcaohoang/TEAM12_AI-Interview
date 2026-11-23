@@ -1,6 +1,6 @@
-"""Router nhật ký hoạt động dự án."""
+"""Router nhật ký hoạt động dự án (Audit Trail)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, PermissionDeniedError
@@ -10,16 +10,24 @@ from app.models.user import User
 from app.schemas.activity import PaginatedActivityResponse
 from app.services import activity as activity_service
 
-router = APIRouter(tags=["activities"])
+router = APIRouter(tags=["Activities"])
 
 
 @router.get(
     "/projects/{project_id}/activities",
     response_model=PaginatedActivityResponse,
-    summary="Lấy lịch sử hoạt động của dự án (có phân trang)",
+    status_code=status.HTTP_200_OK,
+    summary="Lấy lịch sử hoạt động của dự án",
+    description="Truy xuất dòng thời gian các hoạt động (tạo dự án, cập nhật thông tin, tạo/sửa/đổi trạng thái/xóa task). Yêu cầu người dùng là thành viên dự án.",
+    responses={
+        200: {"description": "Lấy danh sách nhật ký hoạt động thành công kèm metadata phân trang."},
+        400: {"description": "Tham số phân trang không hợp lệ (page < 1 hoặc page_size vượt quá 100)."},
+        403: {"description": "Người dùng không thuộc dự án này."},
+        404: {"description": "Dự án không tồn tại hoặc đã bị xóa mềm."},
+    },
 )
 def list_project_activities(
-    project_id: int,
+    project_id: int = Path(..., gt=0, description="ID của dự án cần lấy lịch sử hoạt động"),
     page: int = Query(1, description="Trang hiện tại (>= 1)"),
     page_size: int = Query(10, description="Số bản ghi mỗi trang (1-100)"),
     current_user: User = Depends(get_current_user),
