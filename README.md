@@ -1,112 +1,70 @@
-# Hệ thống Quản lý Dự án & Phỏng vấn AI (Backend API)
+# HỆ THỐNG AI INTERVIEW & QUẢN LÝ DỰ ÁN (TEAM 12)
 
-Bộ backend hoàn chỉnh được xây dựng bằng **FastAPI**, **SQLAlchemy 2.0**, **Pydantic v2** và **JWT Authentication (OAuth2)**.
+Dự án được phân chia cấu trúc rõ ràng thành 2 phân hệ độc lập: **Backend API** và **Frontend UI / Figma Design**.
+
+```
+TEAM12_AI-Interview/
+├── backend/                  # Toàn bộ mã nguồn Backend FastAPI của nhóm 12
+│   ├── app/                  # FastAPI Application (Routers, Models, Schemas, Services, Core)
+│   ├── alembic/              # Database Migrations
+│   ├── tests/                # Test suite tự động (11/11 tasks passed)
+│   ├── requirements.txt      # Thư viện Python
+│   ├── alembic.ini           # Cấu hình migration
+│   ├── Dockerfile            # Container build cho Backend
+│   ├── seed.py               # Khởi tạo dữ liệu mẫu
+│   └── README.md             # Hướng dẫn chi tiết chạy Backend API
+│
+├── frontend/                 # Bộ Giao Diện & Thiết Kế Figma Master Kit
+│   ├── index.html            # Prototype tương tác 10 màn hình chuẩn SaaS Dark Mode
+│   ├── tokens.json           # Design Tokens (Colors, Typography, Spacing, Radius)
+│   ├── FIGMA_SPECIFICATION.md# Đặc tả chi tiết từng Artboard/Frame trong Figma
+│   └── README.md             # Hướng dẫn phát triển và kết nối Frontend
+│
+├── docker-compose.yml        # Điều phối khởi chạy toàn bộ dịch vụ (MySQL + Backend)
+└── README.md                 # Tài liệu tổng quan dự án
+```
 
 ---
 
-## Danh Sách Nhiệm Vụ Đã Hoàn Thành (11/11 Tasks)
+## 1. PHÂN HỆ BACKEND (`backend/`)
 
-| STT | Nhiệm vụ | Điểm | Loại | Endpoint chính / Thành phần |
-| :---: | :--- | :---: | :---: | :--- |
-| **1** | **Project – Danh sách dự án** | 3 | Chính | `GET /projects`, `POST /projects`, `GET /projects/{id}`, `PUT /projects/{id}`, `DELETE /projects/{id}` |
-| **2** | **User – Quên/Reset mật khẩu** | 5 | Bonus | `POST /auth/forgot-password`, `POST /auth/reset-password` |
-| **3** | **User – Đổi mật khẩu** | 3 | Bonus | `POST /auth/change-password` |
-| **4** | **User – Profile** | 2 | Chính | `GET /users/profile`, `PUT /users/profile`, `GET /users/{id}` |
-| **5** | **Authentication – Password** | 2 | Chính | `app/core/security.py` (Băm mật khẩu bcrypt, kiểm tra chính sách độ mạnh tối thiểu 6 ký tự) |
-| **6** | **Authentication – Login** | 3 | Chính | `POST /auth/login` (chuẩn OAuth2 form) & `POST /auth/login-json` (JSON body) |
-| **7** | **Authorization – Role guard** | 3 | Chính | `app/dependencies/auth.py` (`require_role("admin", "manager")` bảo vệ các endpoint nhạy cảm) |
-| **8** | **User – Danh sách user** | 3 | Chính | `GET /users` (phân trang `skip`, `limit`, tìm kiếm `search`, lọc theo `role`) |
-| **9** | **Authentication – Register** | 3 | Chính | `POST /auth/register` (đăng ký tài khoản, mã hóa mật khẩu, kiểm tra trùng lặp) |
-| **10** | **Refresh token** | 2 | Bonus | `POST /auth/refresh` (cấp cặp Access Token và Refresh Token mới) |
-| **11** | **Authentication – Current user** | 3 | Chính | `GET /auth/me` (lấy thông tin người dùng đang đăng nhập từ JWT Bearer token) |
+Toàn bộ 11/11 nhiệm vụ backend đã được nhóm hoàn thiện với **FastAPI**, **SQLAlchemy 2.0**, **Pydantic v2** và **JWT OAuth2**:
 
----
+- **Authentication & Security**: Đăng nhập (JSON & OAuth2 Form), Đăng ký, Refresh Token, Quên & Đổi mật khẩu, Role Guard RBAC (`ADMIN`, `MANAGER`, `USER`).
+- **Project Management**: CRUD dự án, soft-delete, thành viên dự án, dashboard thống kê tiến độ.
+- **Task Management**: Tìm kiếm theo title, lọc đa tiêu chí (`status`, `priority`, `assignee`), phân trang offset/limit, sắp xếp linh hoạt, quy trình trạng thái (Workflow Transitions).
+- **Collaboration & Notifications**: Nhật ký hoạt động (Activity Logs), bình luận công việc (Comments), tệp đính kèm CV/tài liệu (Attachments), hệ thống thông báo đẩy (Notifications).
 
-## 1. Cài đặt và kích hoạt môi trường
-
-Mở terminal PowerShell tại thư mục dự án:
-
+### Khởi động nhanh Backend:
 ```powershell
-# Tạo môi trường ảo nếu chưa có
-py -m venv .venv
-
-# Kích hoạt môi trường ảo
-.\.venv\Scripts\Activate.ps1
-
-# Cài đặt các thư viện
+cd backend
+# Cài đặt thư viện nếu chưa có
 pip install -r requirements.txt
+
+# Chạy server FastAPI
+uvicorn app.main:app --reload --port 8000
 ```
+- Swagger Docs: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
 
 ---
 
-## 2. Cấu hình cơ sở dữ liệu
+## 2. PHÂN HỆ FRONTEND (`frontend/`)
 
-Dự án mặc định sử dụng SQLite (`sqlite:///./project_management.db`) để có thể chạy và kiểm thử ngay lập tức mà không cần cài đặt thêm server.
+Bộ thiết kế giao diện hoàn chỉnh bám sát 100% nghiệp vụ **AI Interview**:
 
-Nếu muốn kết nối **MySQL**, tạo file `.env` tại thư mục gốc:
+- **10 Màn hình chuẩn Figma**:
+  1. *Dashboard*: Thống kê tổng quan KPI, biểu đồ tiến độ và nhật ký thao tác.
+  2. *Quản Lý Dự Án & Tasks*: Bảng Kanban kéo thả trạng thái `TODO` &rarr; `IN_PROGRESS` &rarr; `DONE`.
+  3. *Thiết Lập Phỏng Vấn (Setup Wizard)*: Chọn vị trí ứng tuyển, cấp độ, upload CV và dán JD.
+  4. *Kiểm Tra Thiết Bị (Device Check)*: Khung preview camera nhận diện khuôn mặt, thanh đo âm lượng mic thời gian thực.
+  5. *Phòng Phỏng Vấn AI Live*: AI Avatar 3D phát sáng + sóng âm giọng nói, nhận diện giọng nói Speech-to-Text, **Trình soạn thảo Live Code Editor chạy Test Cases**.
+  6. *Báo Cáo Đánh Giá AI*: Điểm tổng kết /100, **Biểu đồ Radar Chart 6 kỹ năng**, phân tích Strengths / Weaknesses.
+  7. *Lịch Sử Phỏng Vấn*: Lưu trữ các buổi phỏng vấn đã thực hiện và tiến trình điểm số.
+  8. *Quản Lý Users*: Bảng phân quyền tài khoản cho Admin.
+  9. *Hồ Sơ & Mật Khẩu*: Cập nhật thông tin cá nhân và đổi mật khẩu.
+  10. *Cổng Xác Thực*: Đăng nhập, đăng ký, quên mật khẩu.
 
-```dotenv
-DATABASE_URL=mysql+pymysql://root:your_password@localhost:3306/project_management
-SECRET_KEY=your-super-long-random-secret-key-at-least-32-chars
-```
-
-Khi khởi động ứng dụng, bảng dữ liệu và tài khoản quản trị viên mặc định sẽ tự động được tạo:
-- **Tài khoản mẫu**: `admin@example.com`
-- **Mật khẩu**: `Admin@123456`
-
----
-
-## 3. Chạy ứng dụng
-
-Từ thư mục gốc khi môi trường ảo đang được kích hoạt:
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Truy cập tài liệu API tương tác tại:
-- **Swagger UI**: `http://127.0.0.1:8000/docs`
-- **ReDoc**: `http://127.0.0.1:8000/redoc`
-
-Bạn có thể ấn nút **Authorize** ở góc phải Swagger UI và đăng nhập với tài khoản `admin@example.com` / `Admin@123456` để gọi trực tiếp các API yêu cầu xác thực.
-
----
-
-## 4. Chạy kiểm thử tự động (Unit / Integration Tests)
-
-Dự án đi kèm bộ test kiểm thử đầy đủ toàn bộ 11 nhiệm vụ:
-
-```powershell
-$env:PYTHONPATH="."
-.\.venv\Scripts\python.exe -m pytest -v tests/test_all_tasks.py
-```
-
-
-# Hướng Dẫn Setup & Triển Khai Dự Án TEAM12_AI-Interview (FastAPI + MySQL)
-
-## 1. Yêu cầu hệ thống
-- **Cách 1 (Khuyên dùng - Docker):** Docker Desktop / Docker Engine + Docker Compose v2+
-- **Cách 2 (Chạy trực tiếp trên máy):** Python 3.11+, MySQL Server 8.0+
-
----
-
-## 2. Cấu hình biến môi trường (`.env`)
-Tạo file `.env` tại thư mục gốc dự án (tham khảo từ `.env.example` nếu có):
-
-```env
-APP_NAME="TEAM12 AI Interview API"
-ENVIRONMENT=development
-DEBUG=True
-
-# Cấu hình MySQL
-MYSQL_ROOT_PASSWORD=rootpassword
-MYSQL_DATABASE=team12_ai_interview
-MYSQL_USER=team12_user
-MYSQL_PASSWORD=team12_pass
-DATABASE_URL=mysql+pymysql://team12_user:team12_pass@localhost:3306/team12_ai_interview
-
-# Bảo mật JWT
-SECRET_KEY=change_this_to_a_secure_random_secret_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-REFRESH_TOKEN_EXPIRE_DAYS=7
+### Cách xem và đưa vào Figma:
+- **Xem giao diện ngay**: Nhấp đúp chuột mở file `frontend/index.html` trên trình duyệt.
+- **Import vào Figma trong 1 phút**: Mở Figma &rarr; Cài plugin **`html.to.design`** &rarr; Copy toàn bộ mã nguồn `frontend/index.html` dán vào plugin và bấm **Import**.
