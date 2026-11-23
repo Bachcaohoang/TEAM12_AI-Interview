@@ -80,3 +80,33 @@ Dự án đi kèm bộ test kiểm thử đầy đủ toàn bộ 11 nhiệm vụ
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe -m pytest -v tests/test_all_tasks.py
 ```
+
+
+# Hướng Dẫn Setup & Triển Khai Dự Án TEAM12_AI-Interview (FastAPI + MySQL)
+
+## 1. Yêu cầu hệ thống
+- **Cách 1 (Khuyên dùng - Docker):** Docker Desktop / Docker Engine + Docker Compose v2+
+- **Cách 2 (Chạy trực tiếp trên máy):** Python 3.11+, MySQL Server 8.0+
+
+---
+
+## 2. Cấu hình biến môi trường (`.env`)
+Tạo file `.env` tại thư mục gốc dự án (tham khảo từ `.env.example` nếu có):
+
+```env
+APP_NAME="TEAM12 AI Interview API"
+ENVIRONMENT=development
+DEBUG=True
+
+# Cấu hình MySQL
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=team12_ai_interview
+MYSQL_USER=team12_user
+MYSQL_PASSWORD=team12_pass
+DATABASE_URL=mysql+pymysql://team12_user:team12_pass@localhost:3306/team12_ai_interview
+
+# Bảo mật JWT
+SECRET_KEY=change_this_to_a_secure_random_secret_key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=7

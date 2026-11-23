@@ -1,0 +1,46 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: team12_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-team12_ai_interview}
+      MYSQL_USER: ${MYSQL_USER:-team12_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-team12_pass}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: team12_fastapi
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MYSQL_SERVER: db
+      MYSQL_PORT: 3306
+      MYSQL_DB: ${MYSQL_DATABASE:-ai_interview_db}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_interview_db}
+      MYSQL_USER: ${MYSQL_USER:-team12_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-team12_pass}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-team12_user}:${MYSQL_PASSWORD:-team12_pass}@db:3306/${MYSQL_DATABASE:-ai_interview_db}
+    ports:
+      - "8000:8000"
+
+volumes:
+  mysql_data:
