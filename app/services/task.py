@@ -380,7 +380,8 @@ def update_task(
     - Người ngoài dự án -> 403 Forbidden.
     - Owner / Manager dự án (hoặc Admin) -> được sửa mọi trường (kể cả giao việc assignee_id).
     - Assignee (người được giao task) -> chỉ được cập nhật trạng thái/mô tả công việc của mình, không được đổi assignee_id/title/priority/due_date.
-    - Member thường khác (không phải Assignee) -> 403 Forbidden.
+    - Task chưa giao cho ai (assignee_id is None) -> thành viên dự án có thể cập nhật.
+    - Member thường khác (khi task đã giao cho người khác) -> 403 Forbidden.
     """
     task = db.scalar(select(Task).where(Task.id == task_id))
     if not task:
@@ -390,8 +391,9 @@ def update_task(
 
     is_manager_or_owner = can_delete_project_task(db, project, current_user)
     is_assignee = task.assignee_id == current_user.id
+    is_unassigned = task.assignee_id is None
 
-    if not is_manager_or_owner and not is_assignee:
+    if not is_manager_or_owner and not is_assignee and not is_unassigned:
         raise PermissionDeniedError(
             "Chỉ chủ dự án, quản lý hoặc người được giao việc (assignee) mới có quyền cập nhật công việc này."
         )
@@ -400,8 +402,8 @@ def update_task(
     old_assignee_id = task.assignee_id
     update_data = task_in.model_dump(exclude_unset=True)
 
-    # Nếu chỉ là Assignee thường (không phải Owner/Manager), chặn sửa các trường quản trị
-    if not is_manager_or_owner:
+    # Nếu chỉ là Assignee thường (không phải Owner/Manager) và task đã có người nhận, chặn sửa các trường quản trị
+    if not is_manager_or_owner and not is_unassigned:
         restricted_fields = {"title", "priority", "due_date", "assignee_id"}
         forbidden_sent = restricted_fields.intersection(update_data.keys())
         if forbidden_sent:
@@ -472,6 +474,7 @@ def update_task(
                 task_id=task.id,
             )
 
+<<<<<<< HEAD
     status_changed = "status" in update_data and old_status != task.status
     if status_changed:
         log_activity(
@@ -492,6 +495,35 @@ def update_task(
             entity_type="task",
             entity_id=task.id,
             description=f"Cập nhật công việc '{task.title}'.",
+=======
+    db.commit()
+    db.refresh(task)
+
+    updated_task = db.scalar(
+        select(Task)
+        .options(joinedload(Task.assignee))
+        .where(Task.id == task.id)
+    )
+    return updated_task or task
+
+def can_delete_project_task(db: Session, project: Project, user: User) -> bool:
+    """
+    Kiểm tra quyền xóa công việc trong dự án:
+    - Admin hệ thống có toàn quyền.
+    - Chủ sở hữu dự án (project.owner_id) có quyền xóa.
+    - Thành viên dự án có vai trò OWNER hoặc MANAGER có quyền xóa.
+    - Thành viên thường (MEMBER) hoặc người ngoài dự án không có quyền xóa.
+    """
+    if user.role and user.role.strip().upper() == "ADMIN":
+        return True
+    if project.owner_id == user.id:
+        return True
+
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user.id,
+>>>>>>> 3722e42 (TB8EDA3: allow project members to update unassigned tasks while preserving RBAC)
         )
 
     db.commit()
