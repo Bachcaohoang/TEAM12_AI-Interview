@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
+from app.services.notification import create_notification
 from app.models.project_member import ProjectMember
 from app.models.task import Task
 from app.models.user import User
@@ -182,6 +183,14 @@ def add_project_member(
         role=role_clean,
     )
     db.add(new_member)
+    create_notification(
+        db,
+        user_id=member_in.user_id,
+        notif_type="PROJECT_ADDED",
+        title="Được thêm vào dự án mới",
+        message=f"Bạn đã được thêm vào dự án '{project.name}' với vai trò {role_clean}.",
+        project_id=project.id,
+    )
     db.commit()
     db.refresh(new_member)
     return new_member

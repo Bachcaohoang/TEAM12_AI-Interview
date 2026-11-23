@@ -10,6 +10,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
+from app.services.notification import create_notification
 from app.models.user import User
 from app.schemas.task import ProjectTaskCreate, TaskUpdate
 
@@ -288,6 +289,17 @@ def create_project_task(
         assignee_id=task_in.assignee_id,
     )
     db.add(new_task)
+    db.flush()
+    if task_in.assignee_id and task_in.assignee_id != current_user.id:
+        create_notification(
+            db,
+            user_id=task_in.assignee_id,
+            notif_type="TASK_ASSIGNED",
+            title="Được giao công việc mới",
+            message=f"Bạn vừa được giao công việc '{new_task.title}' trong dự án '{project.name}'.",
+            project_id=project.id,
+            task_id=new_task.id,
+        )
     db.commit()
     db.refresh(new_task)
 
@@ -326,6 +338,8 @@ def update_task(
             "Chỉ chủ dự án, quản lý hoặc người được giao việc (assignee) mới có quyền cập nhật công việc này."
         )
 
+    old_status = task.status
+    old_assignee_id = task.assignee_id
     update_data = task_in.model_dump(exclude_unset=True)
 
     # Nếu chỉ là Assignee thường (không phải Owner/Manager), chặn sửa các trường quản trị
@@ -372,6 +386,37 @@ def update_task(
         new_assignee_id = update_data["assignee_id"]
         validate_project_assignee(db, project, new_assignee_id)
         task.assignee_id = new_assignee_id
+        if (
+            new_assignee_id is not None
+            and new_assignee_id != old_assignee_id
+            and new_assignee_id != current_user.id
+        ):
+            create_notification(
+                db,
+                user_id=new_assignee_id,
+                notif_type="TASK_ASSIGNED",
+                title="Được giao công việc mới",
+                message=f"Bạn vừa được giao công việc '{task.title}' trong dự án '{project.name}'.",
+                project_id=project.id,
+                task_id=task.id,
+            )
+
+    if "status" in update_data and task.status != old_status:
+        recipients: set[int] = set()
+        if task.assignee_id and task.assignee_id != current_user.id:
+            recipients.add(task.assignee_id)
+        if project.owner_id and project.owner_id != current_user.id:
+            recipients.add(project.owner_id)
+        for recipient_id in recipients:
+            create_notification(
+                db,
+                user_id=recipient_id,
+                notif_type="TASK_STATUS_CHANGED",
+                title="Trạng thái công việc thay đổi",
+                message=f"Công việc '{task.title}' đã chuyển trạng thái từ {old_status} sang {task.status}.",
+                project_id=project.id,
+                task_id=task.id,
+            )
 
     db.commit()
     db.refresh(task)
