@@ -6,6 +6,14 @@ from app.schemas.project_member import (
     ProjectMemberResponse,
     ProjectMemberUpdate,
 )
+from app.schemas.activity import ActivityLogResponse, PaginatedActivityResponse
+from app.schemas.attachment import AttachmentResponse, PaginatedAttachmentResponse
+from app.schemas.comment import (
+    CommentCreate,
+    CommentResponse,
+    CommentUpdate,
+    PaginatedCommentResponse,
+)
 from app.schemas.task import (
     PaginatedTaskResponse,
     ProjectTaskCreate,
@@ -13,6 +21,7 @@ from app.schemas.task import (
     TaskCreate,
     TaskRead,
     TaskResponse,
+    TaskStatusUpdate,
     TaskUpdate,
 )
 from app.schemas.user import (
@@ -55,7 +64,16 @@ __all__ = [
     "TaskCreate",
     "ProjectTaskCreate",
     "TaskUpdate",
+    "TaskStatusUpdate",
     "TaskResponse",
     "TaskRead",
     "PaginatedTaskResponse",
+    "ActivityLogResponse",
+    "PaginatedActivityResponse",
+    "CommentCreate",
+    "CommentUpdate",
+    "CommentResponse",
+    "PaginatedCommentResponse",
+    "AttachmentResponse",
+    "PaginatedAttachmentResponse",
 ]

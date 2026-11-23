@@ -8,6 +8,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.services.activity import ACTION_PROJECT_CREATED, ACTION_PROJECT_UPDATED, log_activity
 
 
 def get_projects(
@@ -51,6 +52,16 @@ def create_project(db: Session, project_in: ProjectCreate, owner_id: int) -> Pro
         owner_id=owner_id,
     )
     db.add(project)
+    db.flush()
+    log_activity(
+        db,
+        user_id=owner_id,
+        project_id=project.id,
+        action=ACTION_PROJECT_CREATED,
+        entity_type="project",
+        entity_id=project.id,
+        description=f"Tạo dự án '{project.name}'.",
+    )
     db.commit()
     db.refresh(project)
     return project
@@ -70,6 +81,15 @@ def update_project(
     if project_in.status is not None:
         project.status = project_in.status.strip()
 
+    log_activity(
+        db,
+        user_id=current_user.id,
+        project_id=project.id,
+        action=ACTION_PROJECT_UPDATED,
+        entity_type="project",
+        entity_id=project.id,
+        description=f"Cập nhật dự án '{project.name}'.",
+    )
     db.commit()
     db.refresh(project)
     return project

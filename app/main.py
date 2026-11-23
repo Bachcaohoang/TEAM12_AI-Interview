@@ -11,9 +11,10 @@ from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.dependencies.get_db import get_db
+import app.models  # noqa: F401  # Đăng ký metadata cho create_all
 from app.models.project import Project
 from app.models.user import User
-from app.routers import auth, projects, tasks, users
+from app.routers import activities, attachments, auth, comments, projects, tasks, users
 
 
 def init_db() -> None:
@@ -62,6 +63,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
+app.include_router(activities.router)
+app.include_router(comments.router)
+app.include_router(attachments.router)
 
 
 @app.get("/", tags=["Health Check"])

@@ -30,6 +30,10 @@ class TaskCreate(TaskBase):
     assignee_id: Optional[int] = Field(None, gt=0, examples=[None])
 
 
+class TaskStatusUpdate(BaseModel):
+    status: str = Field(..., description="Trạng thái mới: TODO, IN_PROGRESS, DONE")
+
+
 class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None

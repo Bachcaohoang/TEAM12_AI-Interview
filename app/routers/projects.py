@@ -9,6 +9,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.dependencies.auth import get_current_user
 from app.dependencies.get_db import get_db
 from app.models.project import Project
+from app.models.task import Task
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import PaginatedTaskResponse, ProjectTaskCreate, TaskResponse

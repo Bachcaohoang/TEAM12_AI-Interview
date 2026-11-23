@@ -6,6 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.models  # noqa: F401
+from app.core.config import settings
 from app.db.base import Base
 from app.dependencies.get_db import get_db
 from app.main import app
@@ -31,6 +33,14 @@ def override_get_db():
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+@pytest.fixture(autouse=True)
+def isolated_upload_dir(tmp_path, monkeypatch):
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(upload_dir))
+    monkeypatch.setattr(settings, "MAX_UPLOAD_SIZE_BYTES", 1024 * 1024)
 
 
 @pytest.fixture(autouse=True)

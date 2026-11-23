@@ -1,13 +1,15 @@
 """Model Công việc (Task)."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.attachment import Attachment
+    from app.models.comment import Comment
     from app.models.project import Project
     from app.models.user import User
 
@@ -31,3 +33,9 @@ class Task(Base):
     # Quan hệ
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     assignee: Mapped[Optional["User"]] = relationship("User", back_populates="assigned_tasks")
+    comments: Mapped[List["Comment"]] = relationship(
+        "Comment", back_populates="task", cascade="all, delete-orphan"
+    )
+    attachments: Mapped[List["Attachment"]] = relationship(
+        "Attachment", back_populates="task", cascade="all, delete-orphan"
+    )
