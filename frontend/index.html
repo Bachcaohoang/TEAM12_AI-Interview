@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Interview & Project Management Platform - Team 12</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+              accent: '#06b6d4',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#0B0F19] text-slate-100 min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP BAR HEADER -->
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-5 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+        <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-200 bg-clip-text text-transparent">AI INTERVIEW STUDIO</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">TEAM 12 • PRODUCTION</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Nền Tảng Phỏng Vấn AI Thông Minh & Quản Lý Tuyển Dụng</p>
+      </div>
+    </div>
+
+    <!-- Navigation Switcher giữa các màn hình -->
+    <div class="hidden xl:flex items-center bg-slate-950/90 p-1 rounded-xl border border-slate-800/80 text-xs overflow-x-auto max-w-3xl custom-scrollbar">
+      <button onclick="switchScreen('dashboard')" id="nav-dashboard" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1 shrink-0">
+        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard
+      </button>
+      <button onclick="switchScreen('projects')" id="nav-projects" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="folder-kanban" class="w-3.5 h-3.5"></i> Dự Án & Tasks
+      </button>
+      <button onclick="switchScreen('setup')" id="nav-setup" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Thiết Lập AI
+      </button>
+      <button onclick="switchScreen('device')" id="nav-device" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="video" class="w-3.5 h-3.5"></i> Test Thiết Bị
+      </button>
+      <button onclick="switchScreen('interview')" id="nav-interview" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="bot" class="w-3.5 h-3.5"></i> Phòng Phỏng Vấn
+      </button>
+      <button onclick="switchScreen('report')" id="nav-report" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> Báo Cáo AI
+      </button>
+      <button onclick="switchScreen('history')" id="nav-history" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="history" class="w-3.5 h-3.5"></i> Lịch Sử
+      </button>
+      <button onclick="switchScreen('users')" id="nav-users" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="users" class="w-3.5 h-3.5"></i> Quản Lý Users
+      </button>
+      <button onclick="switchScreen('profile')" id="nav-profile" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="user-cog" class="w-3.5 h-3.5"></i> Tài Khoản
+      </button>
+      <button onclick="switchScreen('auth')" id="nav-auth" class="nav-btn px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1 shrink-0">
+        <i data-lucide="lock" class="w-3.5 h-3.5"></i> Login / Register
+      </button>
+    </div>
+
+    <!-- Actions & User Profile & Notifications Toggle -->
+    <div class="flex items-center gap-3">
+      <!-- Notification Bell -->
+      <div class="relative">
+        <button onclick="toggleNotificationPanel()" class="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="Xem thông báo hệ thống">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-slate-900 animate-pulse"></span>
+        </button>
+
+        <!-- Notification Dropdown Panel -->
+        <div id="notification-panel" class="hidden absolute right-0 mt-3 w-80 sm:w-96 glass-panel rounded-2xl border border-slate-700 p-4 shadow-2xl z-50 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-xs text-white">Thông Báo Hệ Thống</span>
+              <span id="unread-notif-count" class="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">3 chưa đọc</span>
+            </div>
+            <button onclick="markAllNotificationsRead()" class="text-[11px] text-brand-400 hover:text-brand-300 font-medium">Đánh dấu tất cả đã đọc</button>
+          </div>
+
+          <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 space-y-1 hover:bg-slate-800 transition-colors">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-white">Buổi phỏng vấn AI đã sẵn sàng</span>
+                <span class="text-[10px] text-cyan-400 font-mono">Vừa xong</span>
+              </div>
+              <p class="text-slate-400 text-[11px]">Hệ thống AI đã tổng hợp xong câu hỏi phỏng vấn kỹ thuật cho vị trí Senior Python.</p>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/30 space-y-1 hover:bg-slate-800 transition-colors">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-200">Giao task mới: [Database] Schema</span>
+                <span class="text-[10px] text-slate-400 font-mono">2h trước</span>
+              </div>
+              <p class="text-slate-400 text-[11px]">Trần Quốc Việt đã giao cho bạn task #TASK-02 trong Dự án AI Interview.</p>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/30 space-y-1 hover:bg-slate-800 transition-colors">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-200">Báo cáo đánh giá AI hoàn tất</span>
+                <span class="text-[10px] text-slate-400 font-mono">Hôm qua</span>
+              </div>
+              <p class="text-slate-400 text-[11px]">Ứng viên Nguyễn Văn B đạt điểm tổng kết 88/100 (PASSED).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-6 w-px bg-slate-800"></div>
+
+      <!-- User Profile Header Info -->
+      <button onclick="switchScreen('profile')" class="flex items-center gap-2.5 pl-1 text-left hover:opacity-90 transition-opacity">
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Avatar" class="w-8 h-8 rounded-full object-cover ring-2 ring-brand-500/50">
+        <div class="hidden sm:block">
+          <div class="text-xs font-semibold leading-tight text-slate-200">Trần Quốc Việt</div>
+          <div class="text-[10px] text-cyan-400 font-mono font-medium">ADMIN / LEAD</div>
+        </div>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- APP SIDEBAR -->
+    <aside class="w-64 bg-slate-900/60 border-r border-slate-800/80 p-4 hidden lg:flex flex-col justify-between custom-scrollbar overflow-y-auto">
+      <div class="space-y-6">
+        <div>
+          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Quy Trình Phỏng Vấn AI</div>
+          <nav class="space-y-1">
+            <button onclick="switchScreen('setup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <div class="flex items-center gap-3">
+                <i data-lucide="sliders" class="w-4 h-4 text-brand-400"></i> 1. Thiết lập Phỏng vấn
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono">Config</span>
+            </button>
+            <button onclick="switchScreen('device')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <div class="flex items-center gap-3">
+                <i data-lucide="mic" class="w-4 h-4 text-cyan-400"></i> 2. Test Thiết Bị & Mic
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">Check</span>
+            </button>
+            <button onclick="switchScreen('interview')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <div class="flex items-center gap-3">
+                <i data-lucide="bot" class="w-4 h-4 text-emerald-400"></i> 3. Phòng Phỏng Vấn Live
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold animate-pulse">LIVE</span>
+            </button>
+            <button onclick="switchScreen('report')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <i data-lucide="award" class="w-4 h-4 text-amber-400"></i> 4. Báo Cáo Đánh Giá AI
+            </button>
+            <button onclick="switchScreen('history')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <i data-lucide="history" class="w-4 h-4 text-purple-400"></i> 5. Lịch Sử & Tiến Trình
+            </button>
+          </nav>
+        </div>
+
+        <div>
+          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Quản Lý & Vận Hành</div>
+          <nav class="space-y-1">
+            <button onclick="switchScreen('dashboard')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 text-indigo-400"></i> Dashboard Tổng quan
+            </button>
+            <button onclick="switchScreen('projects')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <div class="flex items-center gap-3">
+                <i data-lucide="kanban" class="w-4 h-4 text-cyan-400"></i> Dự Án & Kanban Tasks
+              </div>
+              <span class="text-[11px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono">11 APIs</span>
+            </button>
+            <button onclick="switchScreen('users')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <i data-lucide="shield-check" class="w-4 h-4 text-violet-400"></i> Phân Quyền Users (RBAC)
+            </button>
+            <button onclick="switchScreen('profile')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors">
+              <i data-lucide="user-cog" class="w-4 h-4 text-rose-400"></i> Hồ Sơ & Mật Khẩu
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Backend Connection Status Card -->
+      <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2 mt-4">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">FastAPI Backend</span>
+          <span id="backend-status-badge" class="inline-flex items-center gap-1.5 text-emerald-400 font-medium font-mono text-[11px]">
+            <span id="backend-status-indicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> 127.0.0.1:8000
+          </span>
+        </div>
+        <div class="text-[11px] text-slate-400 leading-relaxed">
+          SQLite / MySQL DB • SQLAlchemy 2.0 • 11/11 Tasks Verified
+        </div>
+        <a href="http://127.0.0.1:8000/docs" target="_blank" class="block w-full py-1.5 text-center text-xs font-semibold text-brand-300 hover:text-white bg-brand-600/30 hover:bg-brand-600/50 rounded-lg transition-colors border border-brand-500/30">
+          Mở Swagger Docs &rarr;
+        </a>
+      </div>
+    </aside>
+
+    <!-- CONTENT MAIN AREA -->
+    <main class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 space-y-8">
+      
+      <!-- ========================================== -->
+      <!-- SCREEN 1: DASHBOARD OVERVIEW               -->
+      <!-- ========================================== -->
+      <div id="screen-dashboard" class="screen-view space-y-6">
+        <!-- Banner chào mừng -->
+        <div class="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-r from-brand-900/60 via-slate-900 to-slate-950 border border-brand-500/20 shadow-2xl">
+          <div class="relative z-10 max-w-2xl space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-medium">
+              <i data-lucide="sparkle" class="w-3.5 h-3.5 text-cyan-400"></i> Nền Tảng AI Đánh Giá Tuyển Dụng Thông Minh
+            </div>
+            <h1 class="text-3xl font-extrabold text-white tracking-tight">Chào mừng quay trở lại, Quốc Việt!</h1>
+            <p class="text-slate-300 text-sm leading-relaxed">
+              Bạn đang quản lý <span class="text-white font-semibold">2 dự án tuyển dụng</span> và có <span class="text-cyan-400 font-semibold">4 buổi phỏng vấn AI</span> được xếp lịch hôm nay. Hệ thống backend FastAPI đã kết nối sẵn sàng.
+            </p>
+            <div class="flex items-center gap-3 pt-2">
+              <button onclick="switchScreen('setup')" class="px-4 py-2.5 bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-brand-500/20 flex items-center gap-2">
+                <i data-lucide="play" class="w-4 h-4 fill-white"></i> Bắt đầu Phỏng Vấn AI Ngay
+              </button>
+              <button onclick="switchScreen('projects')" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all border border-slate-700 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Tạo Dự Án Mới
+              </button>
+            </div>
+          </div>
+          <div class="absolute -right-10 -bottom-10 w-96 h-96 rounded-full bg-brand-600/10 blur-3xl pointer-events-none"></div>
+          <div class="absolute right-32 top-10 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none"></div>
+        </div>
+
+        <!-- 4 Thẻ KPI Metrics -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-card p-5 rounded-2xl border border-slate-800 hover:border-brand-500/40 transition-all group">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-400">Dự Án Đang Hoạt Động</span>
+              <div class="p-2 rounded-xl bg-brand-500/10 text-brand-400 group-hover:scale-110 transition-transform">
+                <i data-lucide="folder" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <div class="text-2xl font-bold text-white">02</div>
+              <span class="text-[11px] font-medium text-emerald-400 flex items-center gap-0.5">
+                <i data-lucide="trending-up" class="w-3 h-3"></i> +100%
+              </span>
+            </div>
+            <div class="mt-3 text-[11px] text-slate-400">API: GET /projects</div>
+          </div>
+
+          <div class="glass-card p-5 rounded-2xl border border-slate-800 hover:border-cyan-500/40 transition-all group">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-400">Tiến Độ Hoàn Thành</span>
+              <div class="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition-transform">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <div class="text-2xl font-bold text-cyan-300">66.7%</div>
+              <span class="text-[11px] font-medium text-cyan-400">completion_rate</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+              <div class="bg-gradient-to-r from-brand-500 to-cyan-400 h-full rounded-full" style="width: 66.7%"></div>
+            </div>
+          </div>
+
+          <div class="glass-card p-5 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-all group">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-400">Ứng Viên Phỏng Vấn AI</span>
+              <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                <i data-lucide="user-check" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <div class="text-2xl font-bold text-white">28</div>
+              <span class="text-[11px] font-medium text-emerald-400 flex items-center gap-0.5">
+                <i data-lucide="trending-up" class="w-3 h-3"></i> +12 tuần này
+              </span>
+            </div>
+            <div class="mt-3 text-[11px] text-slate-400">Điểm trung bình AI: 84.5/100</div>
+          </div>
+
+          <div class="glass-card p-5 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all group">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium text-slate-400">Nhiệm Vụ Cần Xử Lý</span>
+              <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 transition-transform">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <div class="text-2xl font-bold text-amber-300">03</div>
+              <span class="text-[11px] font-medium text-amber-400">1 quá hạn (Overdue)</span>
+            </div>
+            <div class="mt-3 text-[11px] text-slate-400">Lọc theo `priority: HIGH`</div>
+          </div>
+        </div>
+
+        <!-- Bảng Dự án & Activity Logs -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-white text-base">Danh Sách Dự Án Tuyển Dụng & Phỏng Vấn</h3>
+                <p class="text-xs text-slate-400">Dữ liệu thực từ SQLite Database: project_management.db</p>
+              </div>
+              <button onclick="switchScreen('projects')" class="text-xs font-semibold text-brand-400 hover:text-brand-300">Xem tất cả &rarr;</button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 font-semibold">
+                    <th class="pb-3 px-3">TÊN DỰ ÁN</th>
+                    <th class="pb-3 px-3">CHỦ SỞ HỮU</th>
+                    <th class="pb-3 px-3">TRẠNG THÁI</th>
+                    <th class="pb-3 px-3">TIẾN ĐỘ TASK</th>
+                    <th class="pb-3 px-3 text-right">HÀNH ĐỘNG</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="py-3.5 px-3">
+                      <div class="font-semibold text-white">Dự án AI Interview Backend</div>
+                      <div class="text-[11px] text-slate-400">Xây dựng hệ thống backend quản lý phỏng vấn AI...</div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-brand-600 flex items-center justify-center text-[10px] font-bold">VQ</span>
+                        <span>Trần Quốc Việt</span>
+                      </div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        in_progress
+                      </span>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-20 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div class="bg-brand-500 h-full rounded-full" style="width: 75%"></div>
+                        </div>
+                        <span class="text-[11px] text-slate-300">3/4</span>
+                      </div>
+                    </td>
+                    <td class="py-3.5 px-3 text-right">
+                      <button onclick="switchScreen('projects')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+                        <i data-lucide="external-link" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="py-3.5 px-3">
+                      <div class="font-semibold text-white">Tuyển dụng Kỹ sư AI / Machine Learning</div>
+                      <div class="text-[11px] text-slate-400">Đợt tuyển chọn nhân sự mùa thu Rikkei 2026</div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center text-[10px] font-bold">AD</span>
+                        <span>Quản trị viên (Admin)</span>
+                      </div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                        active
+                      </span>
+                    </td>
+                    <td class="py-3.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-20 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div class="bg-cyan-400 h-full rounded-full" style="width: 50%"></div>
+                        </div>
+                        <span class="text-[11px] text-slate-300">6/12</span>
+                      </div>
+                    </td>
+                    <td class="py-3.5 px-3 text-right">
+                      <button onclick="switchScreen('projects')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+                        <i data-lucide="external-link" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Activity Logs (GET /activities) -->
+          <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-white text-base">Nhật Ký Hoạt Động (Audit Trail)</h3>
+              <span class="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">Real-time</span>
+            </div>
+
+            <div class="space-y-3.5">
+              <div class="flex items-start gap-3 text-xs">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0"></div>
+                <div>
+                  <div class="text-slate-200"><span class="font-semibold text-white">Quốc Việt</span> hoàn thành task <span class="text-brand-300">[Database] Kết nối DB MySQL</span></div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">5 phút trước • TASK_STATUS_CHANGED</div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 text-xs">
+                <div class="w-2 h-2 rounded-full bg-cyan-400 mt-1.5 shrink-0"></div>
+                <div>
+                  <div class="text-slate-200"><span class="font-semibold text-white">AI Interviewer</span> hoàn tất chấm điểm ứng viên <span class="text-cyan-300">Nguyễn Văn B (Senior Python)</span></div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">18 phút trước • AI_EVALUATION_DONE</div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 text-xs">
+                <div class="w-2 h-2 rounded-full bg-brand-400 mt-1.5 shrink-0"></div>
+                <div>
+                  <div class="text-slate-200"><span class="font-semibold text-white">Admin</span> đã thêm thành viên <span class="text-brand-300">dev.member@gmail.com</span> vào dự án</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">1 giờ trước • MEMBER_ADDED</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SCREEN 2: DỰ ÁN & KANBAN TASKS             -->
+      <!-- ========================================== -->
+      <div id="screen-projects" class="screen-view hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold text-white">Bảng Quản Lý Công Việc & Ứng Viên (Kanban)</h2>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">Dự án AI Interview</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Quy trình chuyển đổi trạng thái: TODO &rarr; IN_PROGRESS &rarr; DONE</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+              <input type="text" placeholder="Tìm kiếm task (search)..." class="bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 w-48 sm:w-56">
+            </div>
+
+            <select class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-brand-500">
+              <option value="">Tất cả độ ưu tiên</option>
+              <option value="HIGH">HIGH (Ưu tiên cao)</option>
+              <option value="MEDIUM">MEDIUM (Trung bình)</option>
+              <option value="LOW">LOW (Thấp)</option>
+            </select>
+
+            <button onclick="alert('Form tạo task mới: Gọi API POST /projects/{project_id}/tasks')" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20">
+              <i data-lucide="plus" class="w-4 h-4"></i> Thêm Công Việc
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Cột KANBAN BOARD -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Cột 1: TODO -->
+          <div class="kanban-col rounded-2xl p-4 space-y-3 flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                <span class="font-bold text-sm text-slate-200">CẦN LÀM (TODO)</span>
+              </div>
+              <button onclick="alert('Thêm task vào TODO')" class="text-slate-400 hover:text-white p-1 rounded"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+            <div id="kanban-col-todo" class="space-y-3 min-h-[150px]"></div>
+          </div>
+
+          <!-- Cột 2: IN_PROGRESS -->
+          <div class="kanban-col rounded-2xl p-4 space-y-3 flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <span class="font-bold text-sm text-cyan-300">ĐANG LÀM (IN_PROGRESS)</span>
+              </div>
+              <button onclick="alert('Thêm task vào IN_PROGRESS')" class="text-slate-400 hover:text-white p-1 rounded"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+            <div id="kanban-col-in-progress" class="space-y-3 min-h-[150px]"></div>
+          </div>
+
+          <!-- Cột 3: DONE -->
+          <div class="kanban-col rounded-2xl p-4 space-y-3 flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                <span class="font-bold text-sm text-emerald-300">HOÀN THÀNH (DONE)</span>
+              </div>
+              <span class="text-emerald-400"><i data-lucide="check" class="w-4 h-4"></i></span>
+            </div>
+            <div id="kanban-col-done" class="space-y-3 min-h-[150px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SCREEN 3: THIẾT LẬP PHỎNG VẤN AI (MOCK SETUP WIZARD) -->
+      <!-- ==================================================== -->
+      <div id="screen-setup" class="screen-view hidden space-y-6 max-w-4xl mx-auto">
+        <div class="glass-panel p-8 rounded-3xl border border-slate-800 space-y-6">
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/20 text-xs font-medium">
+              <i data-lucide="sliders" class="w-3.5 h-3.5 text-cyan-400"></i> Bước 1: Cấu Hình Buổi Phỏng Vấn AI
+            </div>
+            <h2 class="text-2xl font-bold text-white">Tùy Chỉnh Tiêu Chí & Vị Trí Tuyển Dụng</h2>
+            <p class="text-xs text-slate-400">Hệ thống AI sẽ sinh bộ câu hỏi kỹ thuật bám sát CV và Job Description (JD) của bạn.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+            <!-- Vị trí ứng tuyển -->
+            <div>
+              <label class="block font-semibold text-slate-300 mb-1.5">Vị Trí Phỏng Vấn (Job Role)</label>
+              <select id="setup-role" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500">
+                <option value="python">Backend Python / FastAPI Engineer</option>
+                <option value="ai">AI / Machine Learning Specialist</option>
+                <option value="fullstack">Fullstack Web Developer</option>
+                <option value="frontend">Frontend React / Next.js Specialist</option>
+                <option value="devops">DevOps & Cloud Engineer</option>
+              </select>
+            </div>
+
+            <!-- Cấp độ kinh nghiệm -->
+            <div>
+              <label class="block font-semibold text-slate-300 mb-1.5">Cấp Độ Ứng Tuyển (Seniority Level)</label>
+              <select id="setup-level" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500">
+                <option value="senior">Senior (3 - 5 năm kinh nghiệm)</option>
+                <option value="middle">Middle (1 - 3 năm kinh nghiệm)</option>
+                <option value="junior">Junior (Fresher / Dưới 1 năm)</option>
+                <option value="lead">Lead / Architect (> 5 năm)</option>
+              </select>
+            </div>
+
+            <!-- Loại phỏng vấn -->
+            <div>
+              <label class="block font-semibold text-slate-300 mb-1.5">Hình Thức Đánh Giá</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" class="py-2 px-3 rounded-xl bg-brand-600 text-white font-semibold text-center border border-brand-500">Kỹ Thuật</button>
+                <button type="button" class="py-2 px-3 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-center">Live Code</button>
+                <button type="button" class="py-2 px-3 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-center">Hành Vi</button>
+              </div>
+            </div>
+
+            <!-- Ngôn ngữ phỏng vấn & Số lượng câu hỏi -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1.5">Ngôn Ngữ</label>
+                <select class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+                  <option>Tiếng Việt</option>
+                  <option>English</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1.5">Số Câu Hỏi</label>
+                <select class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+                  <option selected>5 câu (25 phút)</option>
+                  <option>8 câu (40 phút)</option>
+                  <option>12 câu (60 phút)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tải lên CV ứng viên -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-slate-300">Tải Lên CV Ứng Viên (PDF / DOCX)</label>
+            <div class="border-2 border-dashed border-slate-700 hover:border-brand-500/60 rounded-2xl p-6 text-center transition-colors cursor-pointer bg-slate-950/40">
+              <i data-lucide="upload-cloud" class="w-8 h-8 text-brand-400 mx-auto mb-2"></i>
+              <div class="text-xs text-white font-semibold">Kéo thả tệp CV vào đây hoặc <span class="text-brand-400 underline">chọn tệp từ máy tính</span></div>
+              <div class="text-[11px] text-slate-400 mt-1">Đã hỗ trợ: `CV_TranQuocViet_Backend.pdf` (1.8 MB) • Gọi API: POST /attachments</div>
+            </div>
+          </div>
+
+          <!-- Nhập nội dung JD -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-slate-300">Mô Tả Công Việc (Job Description / JD)</label>
+            <textarea rows="3" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" placeholder="Yêu cầu: Thành thạo FastAPI, SQLAlchemy 2.0, hiểu biết sâu về async/await, database connection pool, unit testing và phân quyền RBAC..."></textarea>
+          </div>
+
+          <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+            <button onclick="switchScreen('dashboard')" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white">Hủy Bỏ</button>
+            <button onclick="switchScreen('device')" class="px-6 py-2.5 bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-brand-500/25 flex items-center gap-2">
+              Tiếp Tục Kiểm Tra Thiết Bị &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SCREEN 4: KIỂM TRA THIẾT BỊ (PRE-INTERVIEW CHECK)    -->
+      <!-- ==================================================== -->
+      <div id="screen-device" class="screen-view hidden space-y-6 max-w-4xl mx-auto">
+        <div class="glass-panel p-8 rounded-3xl border border-slate-800 space-y-6">
+          <div class="flex items-center justify-between">
+            <div class="space-y-1">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-xs font-medium">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5 text-cyan-400"></i> Bước 2: Kiểm Tra Camera & Microphone
+              </div>
+              <h2 class="text-2xl font-bold text-white">Sẵn Sàng Cho Buổi Phỏng Vấn Trực Tuyến</h2>
+              <p class="text-xs text-slate-400">Đảm bảo đường truyền internet, ánh sáng và âm thanh rõ ràng để AI chấm điểm chính xác nhất.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">
+              MẠNG: RẤT TỐT (18ms)
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <!-- Khung xem trước Camera (7 cột) -->
+            <div class="md:col-span-7 space-y-3">
+              <div class="relative aspect-video rounded-2xl bg-black border border-slate-700 overflow-hidden shadow-2xl">
+                <!-- Video stream element for real camera -->
+                <video id="webcam-preview-video" class="w-full h-full object-cover hidden" autoplay playsinline muted></video>
+                <!-- Fallback image -->
+                <img id="webcam-preview-fallback" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80" alt="Webcam Preview" class="w-full h-full object-cover">
+                
+                <div class="absolute top-3 left-3 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[11px] text-white flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span> HD 1080p • 60 FPS
+                </div>
+                <div class="absolute bottom-3 inset-x-3 flex items-center justify-between px-3 py-2 rounded-xl bg-black/70 backdrop-blur-md">
+                  <div class="text-xs text-slate-200">Face Recognition: <span class="text-cyan-400 font-semibold">Đã nhận diện khuôn mặt</span></div>
+                  <div class="flex items-center gap-1.5">
+                    <button class="p-1.5 bg-slate-800 rounded-lg text-white"><i data-lucide="camera" class="w-3.5 h-3.5"></i></button>
+                    <button class="p-1.5 bg-slate-800 rounded-lg text-white"><i data-lucide="settings" class="w-3.5 h-3.5"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kiểm tra Microphone & Loa (5 cột) -->
+            <div class="md:col-span-5 space-y-4">
+              <!-- Test Mic Volume Meter -->
+              <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <i data-lucide="mic" class="w-4 h-4 text-emerald-400"></i> Âm Lượng Microphone
+                  </span>
+                  <span id="mic-status-text" class="text-emerald-400 font-mono text-[11px]">Đang thu âm tốt</span>
+                </div>
+                <!-- Animated Volume Bar Items -->
+                <div class="flex items-center gap-1 h-3.5">
+                  <span class="volume-bar-item flex-1 bg-emerald-400 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-emerald-400 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-emerald-400 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-emerald-400 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-emerald-400 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-slate-800 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-slate-800 h-full rounded transition-all"></span>
+                  <span class="volume-bar-item flex-1 bg-slate-800 h-full rounded transition-all"></span>
+                </div>
+                <p class="text-[11px] text-slate-400">Microphone: Realtek High Definition Audio</p>
+              </div>
+
+              <!-- Test Loa / Tai nghe -->
+              <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <i data-lucide="volume-2" class="w-4 h-4 text-cyan-400"></i> Kiểm Tra Loa / Tai Nghe
+                  </span>
+                  <button onclick="playTestSound()" class="text-[11px] text-brand-400 hover:text-brand-300 font-semibold">Phát thử âm &rarr;</button>
+                </div>
+                <p class="text-[11px] text-slate-400">Hãy nhấn phát thử để chắc chắn bạn nghe rõ câu hỏi từ AI Interviewer.</p>
+              </div>
+
+              <!-- Quy chế phỏng vấn -->
+              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 space-y-1">
+                <div class="font-bold flex items-center gap-1.5 text-amber-300">
+                  <i data-lucide="alert-circle" class="w-4 h-4"></i> Quy Chế Phỏng Vấn AI:
+                </div>
+                <div class="text-[11px] text-slate-300">
+                  Vui lòng không chuyển tab trình duyệt, không tắt camera và giữ môi trường yên tĩnh trong suốt 25 phút.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+            <button onclick="switchScreen('setup')" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white">&larr; Quay lại cấu hình</button>
+            <button onclick="switchScreen('interview')" class="px-6 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2">
+              <i data-lucide="video" class="w-4 h-4"></i> Tôi Đã Sẵn Sàng • Vào Phòng Phỏng Vấn Ngay
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- SCREEN 5: PHÒNG PHỎNG VẤN AI + LIVE CODE RUNNER     -->
+      <!-- ==================================================== -->
+      <div id="screen-interview" class="screen-view hidden space-y-6">
+        <!-- Header Room -->
+        <div class="flex items-center justify-between glass-panel p-4 rounded-2xl border border-slate-800">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center">
+              <i data-lucide="bot" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-bold text-white">Phòng Phỏng Vấn Kỹ Thuật AI Trực Tuyến</h2>
+                <span class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-bold flex items-center gap-1 animate-pulse">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> ĐANG GHI HÌNH & GHI ÂM
+                </span>
+              </div>
+              <p class="text-xs text-slate-400">Vị trí: <span class="text-slate-200 font-semibold">Senior Python & FastAPI Engineer</span> • Tổng: 5 câu hỏi</p>
+            </div>
+          </div>
+
+          <!-- Countdown Timer -->
+          <div class="flex items-center gap-4">
+            <div class="text-right">
+              <div class="text-[10px] text-slate-400 uppercase font-semibold">Thời Gian Còn Lại</div>
+              <div id="interview-countdown-display" class="text-xl font-bold font-mono text-cyan-300">25:00</div>
+            </div>
+            <button onclick="if(confirm('Bạn có chắc chắn muốn kết thúc bài phỏng vấn và xem kết quả chấm điểm?')) switchScreen('report');" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-rose-500/20">
+              <i data-lucide="phone-off" class="w-4 h-4"></i> Kết Thúc Phỏng Vấn
+            </button>
+          </div>
+        </div>
+
+        <!-- Layout Video Webcam & AI Interviewer -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-8 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- AI Interviewer Avatar Card -->
+              <div class="relative aspect-video rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-brand-500/30 overflow-hidden flex flex-col items-center justify-center p-6 text-center">
+                <div class="relative mb-3">
+                  <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-400 p-1 pulse-glow">
+                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
+                  </div>
+                  <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-500 ring-2 ring-slate-900 flex items-center justify-center">
+                    <i data-lucide="sparkles" class="w-3 h-3 text-white"></i>
+                  </span>
+                </div>
+                <h3 class="font-bold text-white text-sm">AI Interviewer (Elena v4.2)</h3>
+                <p id="ai-voice-status" class="text-xs text-cyan-400 font-mono mt-0.5">Speaking: Voice Synthesizer Active</p>
+                <div class="flex items-center gap-1 mt-3 h-5">
+                  <span class="w-1 bg-cyan-400 h-3 rounded-full animate-pulse"></span>
+                  <span class="w-1 bg-brand-400 h-5 rounded-full animate-pulse delay-75"></span>
+                  <span class="w-1 bg-indigo-400 h-4 rounded-full animate-pulse delay-150"></span>
+                  <span class="w-1 bg-cyan-400 h-5 rounded-full animate-pulse"></span>
+                  <span class="w-1 bg-brand-400 h-2 rounded-full animate-pulse delay-100"></span>
+                </div>
+                <div class="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/60 text-[10px] font-mono text-slate-300">
+                  AI BOT
+                </div>
+              </div>
+
+              <!-- Webcam của Ứng viên -->
+              <div class="relative aspect-video rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80" alt="Candidate Webcam" class="w-full h-full object-cover">
+                <div class="absolute bottom-3 left-3 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-xs font-medium text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Trần Quốc Việt (Ứng viên)
+                </div>
+                <div class="absolute bottom-3 right-3 flex items-center gap-1.5">
+                  <button id="mic-record-btn" onclick="toggleSpeechRecognition()" class="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm" title="Bật/Tắt Micro ghi âm"><i data-lucide="mic" class="w-3.5 h-3.5"></i></button>
+                  <button class="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm"><i data-lucide="video" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Câu hỏi hiện tại của AI -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span id="interview-question-title" class="font-bold text-brand-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <i data-lucide="help-circle" class="w-4 h-4 text-cyan-400"></i> Câu Hỏi Số 01 / 05
+                </span>
+                <span id="interview-question-topic" class="text-slate-400">FastAPI, Pydantic v2 & SQLAlchemy 2.0</span>
+              </div>
+              <p id="interview-question-prompt" class="text-sm font-semibold text-white leading-relaxed">
+                "Hãy giải thích sự khác biệt giữa synchronous và asynchronous trong FastAPI. Khi thao tác với cơ sở dữ liệu SQLAlchemy 2.0, bạn tổ chức session và connection pool như thế nào để tránh tình trạng nghẽn kết nối?"
+              </p>
+            </div>
+
+            <!-- Trình Soạn Thảo Live Code Editor -->
+            <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+              <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2 text-slate-400 font-mono">
+                  <i data-lucide="file-code" class="w-3.5 h-3.5 text-brand-400"></i> solution.py
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="run-code-btn" onclick="runCodeTests()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm">
+                    <i data-lucide="play" class="w-3 h-3 fill-white"></i> Chạy Test Cases
+                  </button>
+                </div>
+              </div>
+              
+              <textarea id="interview-code-input" rows="8" class="w-full p-3.5 code-editor-area text-xs font-mono focus:outline-none resize-none"></textarea>
+              
+              <!-- Console Output -->
+              <div id="code-runner-console" class="hidden p-3 bg-black border-t border-slate-800 space-y-1"></div>
+            </div>
+
+            <!-- Live Speech-to-Text & Vùng trả lời -->
+            <div class="glass-panel p-4 rounded-2xl border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i data-lucide="mic-2" class="w-4 h-4 text-emerald-400 animate-pulse"></i> Nhận Diện Giọng Nói Thời Gian Thực (Speech-to-Text)
+                </span>
+                <span class="text-[11px] text-emerald-400 font-mono">Bấm icon mic trên video để nói hoặc gõ trực tiếp</span>
+              </div>
+              <textarea id="interview-live-transcript" rows="3" placeholder="Gõ hoặc nói câu trả lời của bạn tại đây..." class="w-full bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500"></textarea>
+              
+              <div class="flex items-center justify-between pt-1">
+                <button onclick="speakCurrentQuestion()" class="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium">
+                  <i data-lucide="volume-2" class="w-3.5 h-3.5"></i> Nghe lại câu hỏi từ AI
+                </button>
+                <button onclick="submitAnswerAndNext()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5">
+                  Nộp Câu Trả Lời & Sang Câu Tiếp &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar đánh giá Real-time của AI (4 cột) -->
+          <div class="lg:col-span-4 space-y-4">
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+              <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> AI Real-time Signals
+              </h3>
+              
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">Độ tự tin & Ánh mắt:</span>
+                  <span class="font-bold text-emerald-400 font-mono">88%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-emerald-400 h-full rounded-full" style="width: 88%"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">Độ chính xác thuật ngữ:</span>
+                  <span class="font-bold text-brand-400 font-mono">92%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-500 h-full rounded-full" style="width: 92%"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">Tốc độ phản xạ:</span>
+                  <span class="font-bold text-cyan-400 font-mono">Nhanh (1.2s)</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-cyan-400 h-full rounded-full" style="width: 80%"></div>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-slate-800">
+                <div class="text-[11px] text-slate-400 leading-relaxed bg-brand-500/10 border border-brand-500/20 p-3 rounded-xl text-brand-200">
+                  💡 <span class="font-semibold text-white">Gợi ý từ AI:</span> Ứng viên nắm chắc khái niệm Dependency Injection và cấu hình SQLAlchemy; code giải thuật viết sạch và xử lý timezone chuẩn xác.
+                </div>
+              </div>
+            </div>
+
+            <!-- Danh sách câu hỏi trong buổi -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h4 class="font-bold text-white text-xs uppercase tracking-wider text-slate-400">Tiến Trình Câu Hỏi</h4>
+              <div id="interview-questions-progress-list" class="space-y-2 text-xs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SCREEN 6: BÁO CÁO ĐÁNH GIÁ AI (REPORT)     -->
+      <!-- ========================================== -->
+      <div id="screen-report" class="screen-view hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border border-slate-800">
+          <div class="flex items-center gap-4">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Candidate" class="w-16 h-16 rounded-2xl object-cover ring-2 ring-brand-500">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xl font-bold text-white">Báo Cáo Đánh Giá Năng Lực AI: Trần Quốc Việt</h2>
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">PASSED</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Vị trí: Backend Python Specialist • Ngày phỏng vấn: 23/11/2026 • Đánh giá bởi AI Core 4.2</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="alert('Đã sao chép liên kết báo cáo vào Clipboard!')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 flex items-center gap-1.5">
+              <i data-lucide="share-2" class="w-4 h-4"></i> Chia Sẻ Báo Cáo
+            </button>
+            <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-bold text-white shadow-lg shadow-brand-500/20 flex items-center gap-1.5">
+              <i data-lucide="download" class="w-4 h-4"></i> Xuất PDF Report
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-white text-base">Biểu Đồ Năng Lực Toàn Diện (Skill Matrix)</h3>
+                <p class="text-xs text-slate-400">Phân tích 6 chiều dựa trên câu trả lời, giọng nói và live code</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">Tổng điểm AI</span>
+                <div class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-cyan-400 to-emerald-400 font-mono">
+                  88 / 100
+                </div>
+              </div>
+            </div>
+
+            <div class="relative w-full max-w-sm mx-auto aspect-square flex items-center justify-center">
+              <canvas id="radarChart"></canvas>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-800 text-xs">
+              <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-slate-400 text-[11px]">Kiến thức Python & FastAPI</div>
+                <div class="text-base font-bold text-brand-400 font-mono mt-1">92%</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-slate-400 text-[11px]">Cơ sở dữ liệu ORM</div>
+                <div class="text-base font-bold text-cyan-400 font-mono mt-1">88%</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-slate-400 text-[11px]">Giao tiếp & Tự tin</div>
+                <div class="text-base font-bold text-emerald-400 font-mono mt-1">84%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 space-y-4">
+            <div class="glass-panel p-5 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 space-y-3">
+              <div class="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i> Điểm Mạnh Nổi Bật (Strengths)
+              </div>
+              <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside">
+                <li>Nắm rất chắc kiến trúc FastAPI, Pydantic v2 và SQLAlchemy 2.0 ORM.</li>
+                <li>Tư duy giải thuật và kiểm thử tự động (Unit Test / Integration Test) chặt chẽ.</li>
+                <li>Khả năng trình bày logic, mạch lạc, đúng trọng tâm câu hỏi kỹ thuật.</li>
+              </ul>
+            </div>
+
+            <div class="glass-panel p-5 rounded-2xl border border-amber-500/20 bg-amber-950/10 space-y-3">
+              <div class="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase">
+                <i data-lucide="lightbulb" class="w-4 h-4"></i> Cần Cải Thiện (Opportunities)
+              </div>
+              <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside">
+                <li>Nên bổ sung thêm kiến thức về Message Queue (Celery / RabbitMQ) khi mở rộng xử lý async.</li>
+                <li>Tốc độ trả lời ở câu hỏi tình huống văn hóa doanh nghiệp có thể mở rộng thêm kinh nghiệm thực chiến.</li>
+              </ul>
+            </div>
+
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h4 class="font-bold text-white text-xs uppercase tracking-wider text-slate-400">Kết Luận Tuyển Dụng</h4>
+              <p class="text-xs text-slate-200 leading-relaxed">
+                Ứng viên đạt yêu cầu chuyên môn xuất sắc cho vị trí <span class="font-semibold text-cyan-300">Backend AI Engineer</span>. Đề xuất chuyển thẳng sang vòng trao đổi văn hóa với Giám đốc Công nghệ (CTO).
+              </p>
+              <div class="pt-2 flex items-center gap-2">
+                <button onclick="alert('Đã gửi thông báo Chấp thuận & Offer tới email ứng viên!')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md">
+                  Chấp Thuận & Gửi Offer
+                </button>
+                <button onclick="switchScreen('history')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">
+                  Xem Lịch Sử
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- SCREEN 7: LỊCH SỬ PHỎNG VẤN & TIẾN TRÌNH (INTERVIEW HISTORY) -->
+      <!-- ========================================================== -->
+      <div id="screen-history" class="screen-view hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border border-slate-800">
+          <div>
+            <h2 class="text-xl font-bold text-white">Lịch Sử Phỏng Vấn & Tiến Trình Năng Lực</h2>
+            <p class="text-xs text-slate-400 mt-1">Theo dõi điểm số và mức độ tiến bộ qua các buổi phỏng vấn AI giả lập.</p>
+          </div>
+          <button onclick="switchScreen('setup')" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md">
+            <i data-lucide="plus" class="w-4 h-4"></i> Luyện Phỏng Vấn Mới
+          </button>
+        </div>
+
+        <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-semibold">
+                <tr>
+                  <th class="py-3 px-4">NGÀY PHỎNG VẤN</th>
+                  <th class="py-3 px-4">VỊ TRÍ TUYỂN DỤNG</th>
+                  <th class="py-3 px-4">LOẠI PHỎNG VẤN</th>
+                  <th class="py-3 px-4">THỜI LƯỢNG</th>
+                  <th class="py-3 px-4">ĐIỂM AI</th>
+                  <th class="py-3 px-4">KẾT QUẢ</th>
+                  <th class="py-3 px-4 text-right">CHI TIẾT</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60">
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-3.5 px-4 font-mono text-slate-300">23/11/2026 - 10:30</td>
+                  <td class="py-3.5 px-4 font-semibold text-white">Senior Python & FastAPI</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">Kỹ thuật & Code</span></td>
+                  <td class="py-3.5 px-4 text-slate-400 font-mono">25 phút</td>
+                  <td class="py-3.5 px-4 font-bold text-cyan-300 font-mono">88 / 100</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">PASSED</span></td>
+                  <td class="py-3.5 px-4 text-right">
+                    <button onclick="switchScreen('report')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-300 font-medium text-[11px]">Xem Báo Cáo</button>
+                  </td>
+                </tr>
+
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-3.5 px-4 font-mono text-slate-300">18/11/2026 - 14:15</td>
+                  <td class="py-3.5 px-4 font-semibold text-white">AI / Machine Learning Specialist</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Lý thuyết AI</span></td>
+                  <td class="py-3.5 px-4 text-slate-400 font-mono">35 phút</td>
+                  <td class="py-3.5 px-4 font-bold text-amber-300 font-mono">76 / 100</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold text-[10px]">CONSIDER</span></td>
+                  <td class="py-3.5 px-4 text-right">
+                    <button onclick="switchScreen('report')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-300 font-medium text-[11px]">Xem Báo Cáo</button>
+                  </td>
+                </tr>
+
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-3.5 px-4 font-mono text-slate-300">10/11/2026 - 09:00</td>
+                  <td class="py-3.5 px-4 font-semibold text-white">Fullstack Engineer</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Hành vi & Văn hóa</span></td>
+                  <td class="py-3.5 px-4 text-slate-400 font-mono">28 phút</td>
+                  <td class="py-3.5 px-4 font-bold text-emerald-300 font-mono">91 / 100</td>
+                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">EXCELLENT</span></td>
+                  <td class="py-3.5 px-4 text-right">
+                    <button onclick="switchScreen('report')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-300 font-medium text-[11px]">Xem Báo Cáo</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SCREEN 8: QUẢN LÝ USERS (RBAC ROLE GUARD)  -->
+      <!-- ========================================== -->
+      <div id="screen-users" class="screen-view hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold text-white">Quản Lý Người Dùng & Phân Quyền (RBAC)</h2>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">Role Guard: ADMIN Only</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Quản lý toàn bộ tài khoản trong hệ thống thông qua API `GET /users`, `PUT /users/{id}`</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+              <input type="text" placeholder="Tìm theo tên/email..." class="bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 w-52">
+            </div>
+            <button onclick="alert('Thêm tài khoản người dùng mới (Gọi API: POST /auth/register)')" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md">
+              <i data-lucide="user-plus" class="w-4 h-4"></i> Thêm User Mới
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-semibold">
+                <tr>
+                  <th class="py-3 px-4">ID</th>
+                  <th class="py-3 px-4">NGƯỜI DÙNG</th>
+                  <th class="py-3 px-4">EMAIL</th>
+                  <th class="py-3 px-4">VAI TRÒ (ROLE)</th>
+                  <th class="py-3 px-4">TRẠNG THÁI</th>
+                  <th class="py-3 px-4 text-right">THAO TÁC</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60">
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-3.5 px-4 font-mono text-slate-400">1</td>
+                  <td class="py-3.5 px-4 font-semibold text-white flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center font-bold text-white text-xs">AD</div>
+                    <span>Quản trị viên (Admin)</span>
+                  </td>
+                  <td class="py-3.5 px-4 text-slate-300 font-mono">admin@gmail.com</td>
+                  <td class="py-3.5 px-4">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">ADMIN</span>
+                  </td>
+                  <td class="py-3.5 px-4">
+                    <span class="inline-flex items-center gap-1 text-emerald-400 text-[11px] font-medium">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Đang hoạt động
+                    </span>
+                  </td>
+                  <td class="py-3.5 px-4 text-right space-x-1">
+                    <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                    <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400"><i data-lucide="lock" class="w-3.5 h-3.5"></i></button>
+                  </td>
+                </tr>
+
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-3.5 px-4 font-mono text-slate-400">2</td>
+                  <td class="py-3.5 px-4 font-semibold text-white flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center font-bold text-white text-xs">VQ</div>
+                    <span>Trần Nguyễn Quốc Việt</span>
+                  </td>
+                  <td class="py-3.5 px-4 text-slate-300 font-mono">viet.tran@gmail.com</td>
+                  <td class="py-3.5 px-4">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">USER (OWNER)</span>
+                  </td>
+                  <td class="py-3.5 px-4">
+                    <span class="inline-flex items-center gap-1 text-emerald-400 text-[11px] font-medium">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Đang hoạt động
+                    </span>
+                  </td>
+                  <td class="py-3.5 px-4 text-right space-x-1">
+                    <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                    <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400"><i data-lucide="lock" class="w-3.5 h-3.5"></i></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- SCREEN 9: HỒ SƠ CÁ NHÂN & ĐỔI MẬT KHẨU (USER SETTINGS)     -->
+      <!-- ========================================================== -->
+      <div id="screen-profile" class="screen-view hidden space-y-6 max-w-4xl mx-auto">
+        <div class="glass-panel p-8 rounded-3xl border border-slate-800 space-y-6">
+          <div>
+            <h2 class="text-xl font-bold text-white">Hồ Sơ Cá Nhân & Cài Đặt Bảo Mật</h2>
+            <p class="text-xs text-slate-400 mt-1">Tương thích API: `GET/PUT /users/profile` và `POST /auth/change-password`</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
+            <!-- Cột trái: Ảnh đại diện & Thông tin tóm tắt (4 cột) -->
+            <div class="md:col-span-4 flex flex-col items-center text-center space-y-3 p-5 rounded-2xl bg-slate-900/60 border border-slate-800">
+              <div class="relative">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="Avatar" class="w-24 h-24 rounded-full object-cover ring-4 ring-brand-500/30">
+                <button class="absolute bottom-0 right-0 p-1.5 rounded-full bg-brand-600 hover:bg-brand-500 text-white shadow"><i data-lucide="camera" class="w-3.5 h-3.5"></i></button>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">Trần Nguyễn Quốc Việt</h3>
+                <p class="text-xs text-slate-400 font-mono">viet.tran@gmail.com</p>
+                <span class="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">PROJECT OWNER / USER</span>
+              </div>
+            </div>
+
+            <!-- Cột phải: Form cập nhật thông tin & đổi mật khẩu (8 cột) -->
+            <div class="md:col-span-8 space-y-5 text-xs">
+              <!-- Form cập nhật thông tin (PUT /users/profile) -->
+              <div class="space-y-3">
+                <h4 class="font-bold text-white text-xs uppercase tracking-wider text-slate-300">Thông Tin Tài Khoản</h4>
+                <div>
+                  <label class="block font-medium text-slate-400 mb-1">Họ và Tên</label>
+                  <input type="text" value="Trần Nguyễn Quốc Việt" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-brand-500">
+                </div>
+                <div>
+                  <label class="block font-medium text-slate-400 mb-1">Email</label>
+                  <input type="email" value="viet.tran@gmail.com" disabled class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-500 cursor-not-allowed">
+                </div>
+                <button onclick="alert('Cập nhật hồ sơ thành công qua API PUT /users/profile!')" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-semibold shadow">
+                  Lưu Thông Tin
+                </button>
+              </div>
+
+              <!-- Form Đổi Mật Khẩu (POST /auth/change-password) -->
+              <div class="pt-4 border-t border-slate-800 space-y-3">
+                <h4 class="font-bold text-white text-xs uppercase tracking-wider text-slate-300">Đổi Mật Khẩu Bảo Mật</h4>
+                <div>
+                  <label class="block font-medium text-slate-400 mb-1">Mật khẩu hiện tại</label>
+                  <input type="password" placeholder="Nhập mật khẩu cũ..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-brand-500">
+                </div>
+                <div>
+                  <label class="block font-medium text-slate-400 mb-1">Mật khẩu mới (Tối thiểu 6 ký tự)</label>
+                  <input type="password" placeholder="Nhập mật khẩu mới..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-brand-500">
+                </div>
+                <button onclick="alert('Đổi mật khẩu thành công qua API POST /auth/change-password!')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-semibold">
+                  Đổi Mật Khẩu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SCREEN 10: AUTH (LOGIN, REGISTER, FORGOT)  -->
+      <!-- ========================================== -->
+      <div id="screen-auth" class="screen-view hidden py-8 max-w-md mx-auto space-y-6">
+        <div class="text-center space-y-2">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 mx-auto flex items-center justify-center shadow-lg shadow-brand-500/30">
+            <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+          </div>
+          <h2 class="text-2xl font-extrabold text-white">Chào mừng trở lại</h2>
+          <p class="text-xs text-slate-400">Đăng nhập tài khoản hệ thống AI Interview & Task Management</p>
+        </div>
+
+        <div class="glass-panel p-8 rounded-3xl border border-slate-800 space-y-5">
+          <form onsubmit="event.preventDefault(); alert('Đăng nhập thành công với JWT Token!'); switchScreen('dashboard');" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Địa chỉ Email</label>
+              <div class="relative">
+                <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                <input type="email" value="viet.tran@gmail.com" required class="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-semibold text-slate-300">Mật khẩu</label>
+                <a href="#" class="text-[11px] text-brand-400 hover:text-brand-300 font-medium">Quên mật khẩu?</a>
+              </div>
+              <div class="relative">
+                <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                <input type="password" value="••••••••" required class="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-brand-600 focus:ring-0">
+                <span>Ghi nhớ phiên (Refresh Token API)</span>
+              </label>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white text-xs font-bold transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2">
+              <i data-lucide="log-in" class="w-4 h-4"></i> Đăng Nhập
+            </button>
+          </form>
+
+          <div class="pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
+            Chưa có tài khoản? <a href="#" class="font-semibold text-brand-400 hover:text-brand-300">Đăng ký ngay (POST /auth/register)</a>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL: TASK DETAIL (Comments, Attachments, Audit Logs) -->
+  <div id="modal-task-detail" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl p-6 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">HIGH</span>
+          <span id="modal-task-code" class="text-xs text-slate-400 font-mono">#TASK-02</span>
+        </div>
+        <button onclick="closeTaskDetailModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2">
+        <h3 id="modal-task-title" class="text-lg font-bold text-white">[AI Interview] Tích hợp AI chấm điểm giọng nói & Speech-to-Text</h3>
+        <p id="modal-task-desc" class="text-xs text-slate-300 leading-relaxed">
+          Xây dựng giao diện ghi âm trực tiếp trên browser, truyền stream audio sang backend FastAPI để xử lý Speech-to-Text và tính toán độ tương đồng câu trả lời ứng viên.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs">
+        <div>
+          <span class="text-slate-400 text-[10px]">Người phụ trách:</span>
+          <div class="font-semibold text-white mt-0.5 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-brand-600 text-[9px] flex items-center justify-center font-bold">VQ</span>
+            Trần Quốc Việt
+          </div>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px]">Trạng thái:</span>
+          <div id="modal-task-status" class="font-semibold text-cyan-400 mt-0.5">IN_PROGRESS</div>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px]">Hạn chót:</span>
+          <div class="font-semibold text-rose-400 mt-0.5">25/11/2026</div>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div class="flex items-center gap-4 border-b border-slate-800 text-xs font-semibold pb-2">
+          <button class="text-brand-400 border-b-2 border-brand-500 pb-2 -mb-2 flex items-center gap-1.5">
+            <i data-lucide="message-square" class="w-4 h-4"></i> Bình luận thảo luận
+          </button>
+          <button class="text-slate-400 hover:text-white flex items-center gap-1.5">
+            <i data-lucide="paperclip" class="w-4 h-4"></i> Tệp đính kèm (CV_Backend.pdf)
+          </button>
+        </div>
+
+        <div id="task-comments-list" class="space-y-3 text-xs max-h-48 overflow-y-auto custom-scrollbar">
+          <div class="flex items-start gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-cyan-600 text-[10px] text-white font-bold flex items-center justify-center shrink-0">AD</span>
+            <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60 flex-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white">Quản trị viên (Admin)</span>
+                <span class="text-[10px] text-slate-400">10:15 AM</span>
+              </div>
+              <p class="text-slate-300">Đã kiểm tra API upload attachment và test suite. Đảm bảo hỗ trợ cả định dạng audio wav/mp3 nhé!</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input id="task-comment-input" type="text" placeholder="Viết bình luận công việc..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+          <button onclick="addCommentToTask()" class="px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold">Gửi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Logic Script -->
+  <script src="app.js"></script>
+</body>
+</html>

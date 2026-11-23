@@ -1,0 +1,106 @@
+/* AI Interview Platform - Custom Styles & Micro-interactions */
+
+:root {
+  --brand-primary: #6366f1;
+  --brand-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #06b6d4 100%);
+  --bg-dark: #0B0F19;
+  --bg-card: #111827;
+  --bg-surface: #1F2937;
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-dark);
+  color: #f8fafc;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+/* Glassmorphism Effect */
+.glass-panel {
+  background: rgba(17, 24, 39, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+}
+
+.glass-card {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(99, 102, 241, 0.2);
+}
+
+/* Glow & Pulse Animations */
+@keyframes aiGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), inset 0 0 15px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(6, 182, 212, 0.7), inset 0 0 25px rgba(99, 102, 241, 0.5);
+  }
+}
+
+.ai-pulse-ring {
+  animation: aiGlow 3s infinite ease-in-out;
+}
+
+@keyframes voiceBar {
+  0%, 100% { height: 6px; }
+  50% { height: 28px; }
+}
+
+.voice-wave-bar {
+  animation: voiceBar 1.2s infinite ease-in-out;
+}
+
+/* Code Editor Window */
+.code-editor-area {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #0d1117;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+/* Active navigation state */
+.nav-active {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0.08) 100%);
+  color: #ffffff !important;
+  border-left: 3px solid #6366f1;
+}
+
+/* Kanban column styling */
+.kanban-col {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Dragging styling */
+.task-dragging {
+  opacity: 0.5;
+  transform: rotate(2deg) scale(0.98);
+}
