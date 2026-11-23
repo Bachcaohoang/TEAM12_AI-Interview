@@ -138,12 +138,13 @@ def change_task_status(
 @router.delete(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Xóa công việc",
+    summary="Xóa công việc theo ID",
+    description="Xóa công việc (chỉ chủ dự án, quản lý dự án MANAGER/OWNER hoặc admin hệ thống).",
 )
 def delete_task(
     task_id: int = Path(..., gt=0, description="ID của công việc"),
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     try:
         task_service.delete_task(db=db, task_id=task_id, current_user=current_user)

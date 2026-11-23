@@ -1,6 +1,7 @@
 """Nghiệp vụ quản lý công việc (Task)."""
 
 import math
+from datetime import datetime, timezone
 from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
@@ -18,19 +19,25 @@ from app.services.activity import (
     ACTION_TASK_UPDATED,
     log_activity,
 )
+from app.services.notification import create_notification
 
 # Các giá trị hợp lệ theo nghiệp vụ và model
 VALID_TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
 VALID_TASK_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
-ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "title", "status", "priority"}
+ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "TODO": {"IN_PROGRESS"},
+    "IN_PROGRESS": {"TODO", "DONE"},
+    "DONE": {"IN_PROGRESS"},
+}
+ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "title", "status", "priority", "due_date"}
 VALID_SORT_ORDERS = {"asc", "desc"}
 
 
 def is_user_project_member(db: Session, project: Project, user: User) -> bool:
     """
-    Kiểm tra xem user có quyền truy cập vào project hay không:
+    Kiểm tra xem user có quyền truy cập / thuộc project hay không:
     - Admin hệ thống có toàn quyền.
-    - Chủ sở hữu dự án (Owner) có toàn quyền.
+    - Chủ sở hữu dự án (Owner) thuộc dự án.
     - Thành viên dự án trong bảng project_members.
     """
     if user.role and user.role.strip().upper() == "ADMIN":
@@ -50,10 +57,15 @@ def is_user_project_member(db: Session, project: Project, user: User) -> bool:
 def check_project_access(db: Session, project_id: int, current_user: User) -> Project:
     """
     Kiểm tra sự tồn tại của dự án và quyền truy cập của người dùng hiện tại.
-    - Raise NotFoundError nếu dự án không tồn tại.
+    - Raise NotFoundError nếu dự án không tồn tại hoặc đã xóa mềm.
     - Raise PermissionDeniedError nếu người dùng không phải thành viên dự án.
     """
-    project = db.scalar(select(Project).where(Project.id == project_id))
+    project = db.scalar(
+        select(Project).where(
+            Project.id == project_id,
+            Project.is_deleted.is_(False),
+        )
+    )
     if not project:
         raise NotFoundError(f"Không tìm thấy dự án với ID {project_id}.")
 
@@ -76,6 +88,73 @@ def get_task_for_user(db: Session, task_id: int, current_user: User) -> Task:
 
 # Alias get_task_by_id to get_task_for_user for compatibility
 get_task_by_id = get_task_for_user
+
+
+def validate_project_assignee(db: Session, project: Project, assignee_id: Optional[int]) -> None:
+    """
+    Kiểm tra người được giao việc (assignee):
+    - Nếu assignee_id là None: hợp lệ (không giao hoặc gỡ người phụ trách).
+    - Nếu user không tồn tại: raise NotFoundError (404).
+    - Nếu user không thuộc project: raise ValueError (400).
+    """
+    if assignee_id is None:
+        return
+
+    assignee = db.scalar(select(User).where(User.id == assignee_id))
+    if not assignee:
+        raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {assignee_id}.")
+
+    if not is_user_project_member(db, project, assignee):
+        raise ValueError(
+            f"Người dùng với ID {assignee_id} không phải là thành viên của dự án này."
+        )
+
+
+def validate_status_transition(current_status: str, new_status: str) -> None:
+    """
+    Kiểm tra tính hợp lệ khi chuyển trạng thái công việc:
+    - TODO -> IN_PROGRESS
+    - IN_PROGRESS -> TODO | DONE
+    - DONE -> IN_PROGRESS
+    """
+    current_clean = (current_status or "TODO").strip().upper()
+    new_clean = new_status.strip().upper()
+
+    if new_clean not in VALID_TASK_STATUSES:
+        valid_str = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(f"Trạng thái '{new_status}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
+
+    if current_clean == new_clean:
+        return
+
+    allowed_next = ALLOWED_STATUS_TRANSITIONS.get(current_clean, set())
+    if new_clean not in allowed_next:
+        allowed_str = ", ".join(sorted(allowed_next)) if allowed_next else "không có"
+        raise ValueError(
+            f"Không thể chuyển trạng thái từ '{current_clean}' sang '{new_clean}'. "
+            f"Các trạng thái tiếp theo hợp lệ: {allowed_str}."
+        )
+
+
+def validate_and_normalize_due_date(due_date: Optional[datetime]) -> Optional[datetime]:
+    """
+    Chuẩn hóa và kiểm tra hợp lệ thời hạn hoàn thành (due_date):
+    - Chuyển đổi timezone-aware datetime về naive UTC để lưu đồng nhất trong DB.
+    - Từ chối due_date nằm trong quá khứ (< thời điểm hiện tại UTC).
+    """
+    if due_date is None:
+        return None
+
+    if due_date.tzinfo is not None:
+        due_utc = due_date.astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        due_utc = due_date
+
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if due_utc < now_utc:
+        raise ValueError("Hạn chót (due_date) không được nằm trong quá khứ.")
+
+    return due_utc
 
 
 def get_project_tasks(
@@ -184,8 +263,8 @@ def create_project_task(
     task_in: ProjectTaskCreate,
     current_user: User,
 ) -> Task:
-    """Tạo công việc mới trong một dự án."""
-    check_project_access(db, project_id, current_user)
+    """Tạo công việc mới trong một dự án (validate status, priority, due_date và assignee)."""
+    project = check_project_access(db, project_id, current_user)
 
     title_clean = task_in.title.strip()
     if not title_clean:
@@ -201,15 +280,13 @@ def create_project_task(
         valid_str = ", ".join(sorted(VALID_TASK_PRIORITIES))
         raise ValueError(f"Mức độ ưu tiên '{task_in.priority}' không hợp lệ. Các giá trị hợp lệ: {valid_str}")
 
-    if task_in.assignee_id is not None:
-        assignee = db.scalar(select(User).where(User.id == task_in.assignee_id))
-        if not assignee:
-            raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {task_in.assignee_id}.")
+    due_date_utc = validate_and_normalize_due_date(task_in.due_date)
+    validate_project_assignee(db, project, task_in.assignee_id)
 
     new_task = Task(
         title=title_clean,
         description=task_in.description.strip() if task_in.description else None,
-        due_date=task_in.due_date,
+        due_date=due_date_utc,
         status=status_clean,
         priority=priority_clean,
         project_id=project_id,
@@ -226,6 +303,16 @@ def create_project_task(
         entity_id=new_task.id,
         description=f"Tạo công việc '{title_clean}'.",
     )
+    if task_in.assignee_id and task_in.assignee_id != current_user.id:
+        create_notification(
+            db,
+            user_id=task_in.assignee_id,
+            notif_type="TASK_ASSIGNED",
+            title="Được giao công việc mới",
+            message=f"Bạn vừa được giao công việc '{new_task.title}' trong dự án '{project.name}'.",
+            project_id=project.id,
+            task_id=new_task.id,
+        )
     db.commit()
     db.refresh(new_task)
 
@@ -257,6 +344,31 @@ def _normalize_optional_priority(priority: Optional[str]) -> Optional[str]:
     return priority_clean
 
 
+def can_delete_project_task(db: Session, project: Project, user: User) -> bool:
+    """
+    Kiểm tra quyền quản lý / xóa công việc trong dự án:
+    - Admin hệ thống có toàn quyền.
+    - Chủ sở hữu dự án (project.owner_id) có quyền.
+    - Thành viên dự án có vai trò OWNER hoặc MANAGER có quyền.
+    - Thành viên thường (MEMBER) hoặc người ngoài dự án không có quyền.
+    """
+    if user.role and user.role.strip().upper() == "ADMIN":
+        return True
+    if project.owner_id == user.id:
+        return True
+
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user.id,
+        )
+    )
+    if not member or not member.role:
+        return False
+
+    return member.role.strip().upper() in {"OWNER", "MANAGER"}
+
+
 def update_task(
     db: Session,
     task_id: int,
@@ -264,15 +376,38 @@ def update_task(
     current_user: User,
 ) -> Task:
     """
-    Cập nhật một phần hoặc toàn bộ công việc:
-    - Hỗ trợ cả PATCH (chỉ cập nhật trường được truyền) và PUT.
-    - Kiểm tra tính hợp lệ của status, priority, title, assignee_id.
-    - Ghi log activity theo trạng thái thay đổi.
+    Cập nhật một phần công việc (PATCH) với phân quyền chặt chẽ (chống IDOR):
+    - Người ngoài dự án -> 403 Forbidden.
+    - Owner / Manager dự án (hoặc Admin) -> được sửa mọi trường (kể cả giao việc assignee_id).
+    - Assignee (người được giao task) -> chỉ được cập nhật trạng thái/mô tả công việc của mình, không được đổi assignee_id/title/priority/due_date.
+    - Member thường khác (không phải Assignee) -> 403 Forbidden.
     """
-    task = get_task_for_user(db, task_id, current_user)
-    old_status = task.status
+    task = db.scalar(select(Task).where(Task.id == task_id))
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
 
+    project = check_project_access(db, task.project_id, current_user)
+
+    is_manager_or_owner = can_delete_project_task(db, project, current_user)
+    is_assignee = task.assignee_id == current_user.id
+
+    if not is_manager_or_owner and not is_assignee:
+        raise PermissionDeniedError(
+            "Chỉ chủ dự án, quản lý hoặc người được giao việc (assignee) mới có quyền cập nhật công việc này."
+        )
+
+    old_status = task.status
+    old_assignee_id = task.assignee_id
     update_data = task_in.model_dump(exclude_unset=True)
+
+    # Nếu chỉ là Assignee thường (không phải Owner/Manager), chặn sửa các trường quản trị
+    if not is_manager_or_owner:
+        restricted_fields = {"title", "priority", "due_date", "assignee_id"}
+        forbidden_sent = restricted_fields.intersection(update_data.keys())
+        if forbidden_sent:
+            raise PermissionDeniedError(
+                "Người được giao việc (assignee) chỉ được cập nhật trạng thái hoặc mô tả công việc."
+            )
 
     if "title" in update_data:
         raw_title = update_data["title"]
@@ -285,27 +420,57 @@ def update_task(
         task.description = raw_desc.strip() if raw_desc is not None else None
 
     if "due_date" in update_data:
-        task.due_date = update_data["due_date"]
+        task.due_date = validate_and_normalize_due_date(update_data["due_date"])
+
+    if "status" in update_data:
+        raw_status = update_data["status"]
+        if raw_status is None or not raw_status.strip():
+            raise ValueError("Trạng thái công việc không được để trống.")
+        status_clean = raw_status.strip().upper()
+        validate_status_transition(task.status, status_clean)
+        task.status = status_clean
 
     if "priority" in update_data:
         raw_priority = update_data["priority"]
-        if raw_priority is None:
+        if raw_priority is None or not raw_priority.strip():
             raise ValueError("Mức độ ưu tiên không được để trống.")
         task.priority = _normalize_optional_priority(raw_priority)
 
     if "assignee_id" in update_data:
         new_assignee_id = update_data["assignee_id"]
-        if new_assignee_id is not None:
-            assignee = db.scalar(select(User).where(User.id == new_assignee_id))
-            if not assignee:
-                raise NotFoundError(f"Không tìm thấy người dùng được giao việc với ID {new_assignee_id}.")
+        validate_project_assignee(db, project, new_assignee_id)
         task.assignee_id = new_assignee_id
+        if (
+            new_assignee_id is not None
+            and new_assignee_id != old_assignee_id
+            and new_assignee_id != current_user.id
+        ):
+            create_notification(
+                db,
+                user_id=new_assignee_id,
+                notif_type="TASK_ASSIGNED",
+                title="Được giao công việc mới",
+                message=f"Bạn vừa được giao công việc '{task.title}' trong dự án '{project.name}'.",
+                project_id=project.id,
+                task_id=task.id,
+            )
 
-    if "status" in update_data:
-        raw_status = update_data["status"]
-        if raw_status is None:
-            raise ValueError("Trạng thái công việc không được để trống.")
-        task.status = _normalize_optional_status(raw_status)
+    if "status" in update_data and task.status != old_status:
+        recipients: set[int] = set()
+        if task.assignee_id and task.assignee_id != current_user.id:
+            recipients.add(task.assignee_id)
+        if project.owner_id and project.owner_id != current_user.id:
+            recipients.add(project.owner_id)
+        for recipient_id in recipients:
+            create_notification(
+                db,
+                user_id=recipient_id,
+                notif_type="TASK_STATUS_CHANGED",
+                title="Trạng thái công việc thay đổi",
+                message=f"Công việc '{task.title}' đã chuyển trạng thái từ {old_status} sang {task.status}.",
+                project_id=project.id,
+                task_id=task.id,
+            )
 
     status_changed = "status" in update_data and old_status != task.status
     if status_changed:
@@ -343,6 +508,7 @@ def change_task_status(
     new_status = _normalize_optional_status(status)
     if new_status is None:
         raise ValueError("Trạng thái công việc không được để trống.")
+    validate_status_transition(task.status, new_status)
     old_status = task.status
     task.status = new_status
     log_activity(
@@ -359,10 +525,32 @@ def change_task_status(
 
 
 def delete_task(db: Session, task_id: int, current_user: User) -> None:
+    """
+    Xóa một công việc theo ID:
+    - Xóa các file vật lý đính kèm nếu có.
+    - Ghi log activity.
+    - Raise NotFoundError (404) nếu công việc hoặc dự án không tồn tại.
+    - Raise PermissionDeniedError (403) nếu user không có quyền xóa task trong dự án.
+    """
     from app.models.attachment import Attachment
     from app.services.attachment import delete_physical_file
 
-    task = get_task_for_user(db, task_id, current_user)
+    task = db.scalar(select(Task).where(Task.id == task_id))
+    if not task:
+        raise NotFoundError(f"Không tìm thấy công việc với ID {task_id}.")
+
+    project = db.scalar(
+        select(Project).where(
+            Project.id == task.project_id,
+            Project.is_deleted.is_(False),
+        )
+    )
+    if not project:
+        raise NotFoundError(f"Không tìm thấy dự án với ID {task.project_id}.")
+
+    if not can_delete_project_task(db, project, current_user):
+        raise PermissionDeniedError("Bạn không có quyền xóa công việc này.")
+
     stored_paths = list(
         db.scalars(select(Attachment.stored_path).where(Attachment.task_id == task.id)).all()
     )

@@ -36,7 +36,6 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
 
-
     # Alias thuộc tính dạng chữ thường tương thích ngược
     @property
     def secret_key(self) -> str:
@@ -58,11 +57,8 @@ class Settings(BaseSettings):
     def reset_token_expire_minutes(self) -> int:
         return self.RESET_TOKEN_EXPIRE_MINUTES
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 
 settings = Settings()

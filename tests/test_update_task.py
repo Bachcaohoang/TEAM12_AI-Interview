@@ -49,7 +49,7 @@ def task_update_setup(db_session):
     db_session.commit()
     db_session.refresh(project)
 
-    db_session.add(ProjectMember(project_id=project.id, user_id=member.id, role="MEMBER"))
+    db_session.add(ProjectMember(project_id=project.id, user_id=member.id, role="MANAGER"))
 
     task = Task(
         title="Tiêu đề gốc",

@@ -1,18 +1,26 @@
-from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
-from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.schemas.project_member import (
-    ProjectMemberAdd,
-    ProjectMemberBase,
-    ProjectMemberResponse,
-    ProjectMemberUpdate,
-)
+"""Các schema Pydantic dùng kiểm tra dữ liệu vào và ra API."""
+
 from app.schemas.activity import ActivityLogResponse, PaginatedActivityResponse
 from app.schemas.attachment import AttachmentResponse, PaginatedAttachmentResponse
+from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
 from app.schemas.comment import (
     CommentCreate,
     CommentResponse,
     CommentUpdate,
     PaginatedCommentResponse,
+)
+from app.schemas.project import (
+    ProjectBase,
+    ProjectCreate,
+    ProjectRead,
+    ProjectResponse,
+    ProjectUpdate,
+)
+from app.schemas.project_member import (
+    ProjectMemberAdd,
+    ProjectMemberBase,
+    ProjectMemberResponse,
+    ProjectMemberUpdate,
 )
 from app.schemas.task import (
     PaginatedTaskResponse,
@@ -36,9 +44,6 @@ from app.schemas.user import (
     UserUpdate,
 )
 
-# Alias tương thích
-ProjectMemberCreate = ProjectMemberAdd
-
 __all__ = [
     "UserBase",
     "UserCreate",
@@ -52,12 +57,13 @@ __all__ = [
     "LoginRequest",
     "TokenResponse",
     "RefreshTokenRequest",
+    "ProjectBase",
     "ProjectCreate",
     "ProjectRead",
+    "ProjectResponse",
     "ProjectUpdate",
     "ProjectMemberBase",
     "ProjectMemberAdd",
-    "ProjectMemberCreate",
     "ProjectMemberUpdate",
     "ProjectMemberResponse",
     "TaskBase",

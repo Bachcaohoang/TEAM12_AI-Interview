@@ -1,6 +1,7 @@
 from app.models.activity import ActivityLog
 from app.models.attachment import Attachment
 from app.models.comment import Comment
+from app.models.notification import Notification
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
@@ -14,4 +15,5 @@ __all__ = [
     "ActivityLog",
     "Comment",
     "Attachment",
+    "Notification",
 ]

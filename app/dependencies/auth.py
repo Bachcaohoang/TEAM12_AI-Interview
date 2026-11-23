@@ -1,7 +1,6 @@
 """Dependency lấy user từ JWT và kiểm tra quyền theo role."""
 
 from collections.abc import Callable
-from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
 from app.dependencies.get_db import get_db
+from app.models.project import Project
 from app.models.user import User
 from app.services.user import get_user_by_id
 
@@ -28,7 +28,6 @@ def get_current_user(
     )
     try:
         payload = decode_token(token)
-        # Chỉ chấp nhận access token cho việc xác thực người dùng
         token_type = payload.get("type")
         if token_type and token_type != "access":
             raise HTTPException(
@@ -77,3 +76,24 @@ def require_role(*allowed_roles: str) -> Callable[..., User]:
         return current_user
 
     return role_guard
+
+
+def get_owned_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Project:
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy dự án.",
+        )
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ OWNER mới có quyền chỉnh sửa hoặc xóa dự án này.",
+        )
+
+    return project

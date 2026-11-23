@@ -7,57 +7,13 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
-from app.db.base import Base
-from app.db.session import SessionLocal, engine
 from app.dependencies.get_db import get_db
 import app.models  # noqa: F401  # Đăng ký metadata cho create_all
 from app.models.project import Project
 from app.models.user import User
-from app.routers import activities, attachments, auth, comments, projects, tasks, users
+from app.routers import activities, attachments, auth, comments, notifications, projects, tasks, users
 
-
-def init_db() -> None:
-    """Tự động tạo các bảng và gieo dữ liệu tài khoản quản trị mẫu nếu chưa có."""
-    Base.metadata.create_all(bind=engine)
-
-    with SessionLocal() as db:
-        admin_user = db.query(User).filter(User.email == "admin@example.com").first()
-        if not admin_user:
-            admin_user = User(
-                email="admin@example.com",
-                full_name="Quản trị viên Hệ thống",
-                hashed_password=hash_password("Admin@123456"),
-                role="ADMIN",
-                is_active=True,
-            )
-            db.add(admin_user)
-            db.commit()
-            db.refresh(admin_user)
-
-            # Thêm dự án mẫu
-            sample_project = Project(
-                name="Dự án Nâng cấp Hệ thống AI Interview",
-                description="Hệ thống phỏng vấn thông minh và chấm điểm ứng viên tự động.",
-                status="in_progress",
-                owner_id=admin_user.id,
-            )
-            db.add(sample_project)
-            db.commit()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    init_db()
-    yield
-
-
-app = FastAPI(
-    title="Hệ thống quản lý dự án & AI Interview",
-    version="0.2.0",
-    description="Backend API phát triển bằng FastAPI, SQLAlchemy 2.0 và JWT Authentication.",
-    lifespan=lifespan,
-)
+app = FastAPI(title="Hệ thống quản lý dự án & AI Interview", version="0.1.0")
 
 app.include_router(auth.router)
 app.include_router(users.router)
@@ -66,6 +22,7 @@ app.include_router(tasks.router)
 app.include_router(activities.router)
 app.include_router(comments.router)
 app.include_router(attachments.router)
+app.include_router(notifications.router)
 
 
 @app.get("/", tags=["Health Check"])

@@ -49,6 +49,7 @@ class TaskResponse(TaskBase):
     id: int
     project_id: int
     assignee_id: Optional[int] = None
+    is_overdue: bool = Field(False, description="Cờ cảnh báo công việc đã quá hạn chót")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     assignee: Optional[UserResponse] = None
