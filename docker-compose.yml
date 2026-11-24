@@ -21,7 +21,7 @@ services:
 
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: team12_fastapi
     restart: unless-stopped
