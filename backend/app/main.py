@@ -7,6 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.dependencies.get_db import get_db
 import app.models  # noqa: F401  # Đăng ký metadata cho create_all
+from app.db.base import Base
+from app.db.session import engine
+
+# Tự động tạo bảng nếu chưa có
+Base.metadata.create_all(bind=engine)
 from app.routers import (
     activities,
     attachments,
@@ -71,7 +76,9 @@ API Backend hoàn chỉnh xây dựng bằng **FastAPI**, **SQLAlchemy** và **M
     openapi_tags=tags_metadata,
     contact={
         "name": "Nhóm 12 - AI Interview Project",
+        "email": "bach.cao@gmail.com",
     },
+    summary="Thành viên nhóm 12: Cao Hoàng Bách (Trưởng nhóm), Nguyễn Trọng Nhân (Thành viên), Trần Quốc Việt (Thành viên)",
 )
 
 # Đăng ký các router nghiệp vụ

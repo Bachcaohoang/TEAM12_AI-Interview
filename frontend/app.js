@@ -1,17 +1,47 @@
+const TEAM_ACCOUNTS = {
+  'bach.cao@gmail.com': {
+    id: 1,
+    full_name: 'Cao Hoàng Bách',
+    email: 'bach.cao@gmail.com',
+    role: 'ADMIN',
+    roleTitle: '👑 TRƯỞNG NHÓM (ADMIN)',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
+    welcomeHeading: 'Chào mừng Trưởng nhóm, Cao Hoàng Bách!',
+    welcomeDesc: 'Bạn đang giữ quyền hạn Quản trị viên (ADMIN) cao nhất: Kiểm soát toàn bộ 3 thành viên, quản lý dự án và phân quyền RBAC.'
+  },
+  'viet.tran@gmail.com': {
+    id: 2,
+    full_name: 'Trần Quốc Việt',
+    email: 'viet.tran@gmail.com',
+    role: 'MANAGER',
+    roleTitle: '🎯 NHÀ TUYỂN DỤNG & INTERVIEWER',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    welcomeHeading: 'Chào mừng Nhà tuyển dụng, Trần Quốc Việt!',
+    welcomeDesc: 'Bạn đang quản lý 2 dự án tuyển dụng và có 4 buổi phỏng vấn AI được xếp lịch hôm nay. Hệ thống backend FastAPI đã kết nối sẵn sàng.'
+  },
+  'nhan.nguyen@gmail.com': {
+    id: 3,
+    full_name: 'Nguyễn Trọng Nhân',
+    email: 'nhan.nguyen@gmail.com',
+    role: 'USER',
+    roleTitle: '💻 KỸ SƯ HỆ THỐNG (MEMBER)',
+    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120&auto=format&fit=crop&q=80',
+    welcomeHeading: 'Chào mừng Kỹ sư hệ thống, Nguyễn Trọng Nhân!',
+    welcomeDesc: 'Bạn đang truy cập với vai trò Thành viên (MEMBER): Theo dõi các công việc được giao trên bảng Kanban và tham gia bài test kỹ thuật.'
+  }
+};
+
+const savedUserEmail = localStorage.getItem('auth_user_email');
+const initialAccount = savedUserEmail && TEAM_ACCOUNTS[savedUserEmail] ? TEAM_ACCOUNTS[savedUserEmail] : null;
+
 const state = {
-  currentScreen: 'dashboard',
+  currentScreen: initialAccount ? 'dashboard' : 'auth',
   apiBaseUrl: 'http://127.0.0.1:8000',
   isApiConnected: false,
   token: localStorage.getItem('access_token') || null,
   activeProjectId: null,
   selectedTaskId: null,
-  currentUser: {
-    id: 1,
-    full_name: 'Trần Quốc Việt',
-    email: 'viet.tran@gmail.com',
-    role: 'ADMIN',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-  },
+  currentUser: initialAccount,
   projects: [],
   usersList: [],
   activities: [],
@@ -142,7 +172,7 @@ engine = create_engine(
       description: "Kiểm thử tự động hàm băm mật khẩu bcrypt, login JSON/form OAuth2 và refresh token.",
       status: "TODO",
       priority: "MEDIUM",
-      assignee: "Lập trình viên mẫu",
+      assignee: "Nguyễn Trọng Nhân",
       due_date: "28/11/2026",
       comments_count: 1
     },
@@ -249,42 +279,181 @@ async function syncAllBackendData() {
   await fetchActivities();
 }
 
-async function handleLogin(email, password) {
-  if (!state.isApiConnected) {
-    alert('Backend chưa bật, đang đăng nhập ở chế độ Demo!');
-    switchScreen('dashboard');
+// ==========================================
+// AUTHENTICATION & RBAC ROLE HANDLERS
+// ==========================================
+function switchAuthTab(tab) {
+  const loginBtn = document.getElementById('auth-tab-btn-login');
+  const registerBtn = document.getElementById('auth-tab-btn-register');
+  const loginForm = document.getElementById('auth-form-login');
+  const registerForm = document.getElementById('auth-form-register');
+
+  if (tab === 'login') {
+    if (loginBtn) loginBtn.className = "flex-1 py-2 rounded-xl bg-brand-600 text-white shadow transition-all";
+    if (registerBtn) registerBtn.className = "flex-1 py-2 rounded-xl text-slate-400 hover:text-white transition-all";
+    if (loginForm) loginForm.classList.remove('hidden');
+    if (registerForm) registerForm.classList.add('hidden');
+  } else {
+    if (registerBtn) registerBtn.className = "flex-1 py-2 rounded-xl bg-cyan-600 text-white shadow transition-all";
+    if (loginBtn) loginBtn.className = "flex-1 py-2 rounded-xl text-slate-400 hover:text-white transition-all";
+    if (registerForm) registerForm.classList.remove('hidden');
+    if (loginForm) loginForm.classList.add('hidden');
+  }
+  lucide.createIcons();
+}
+
+function quickLoginRole(email, password, role) {
+  const emailInput = document.getElementById('login-email');
+  const passInput = document.getElementById('login-password');
+  if (emailInput) emailInput.value = email;
+  if (passInput) passInput.value = password;
+  performLogin(email, password, role);
+}
+
+function handleLoginSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email')?.value?.trim();
+  const password = document.getElementById('login-password')?.value;
+  if (!email || !password) return alert('Vui lòng nhập email và mật khẩu!');
+  performLogin(email, password);
+}
+
+async function performLogin(email, password, forcedRole) {
+  let matchedUser = TEAM_ACCOUNTS[email];
+  if (!matchedUser) {
+    const inList = state.usersList.find(u => u.email === email);
+    if (inList) {
+      const r = (inList.role || 'USER').toUpperCase();
+      matchedUser = {
+        id: inList.id,
+        full_name: inList.full_name || inList.name,
+        email: inList.email,
+        role: r,
+        roleTitle: r === 'ADMIN' ? '👑 TRƯỞNG NHÓM (ADMIN)' : (r === 'MANAGER' ? '🎯 NHÀ TUYỂN DỤNG' : '💻 THÀNH VIÊN'),
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+        welcomeHeading: `Chào mừng ${inList.full_name || inList.name}!`,
+        welcomeDesc: `Bạn đã đăng nhập với vai trò ${r}.`
+      };
+    } else {
+      const r = (forcedRole || 'USER').toUpperCase();
+      matchedUser = {
+        id: Date.now(),
+        full_name: email.split('@')[0],
+        email: email,
+        role: r,
+        roleTitle: r === 'ADMIN' ? '👑 TRƯỞNG NHÓM (ADMIN)' : (r === 'MANAGER' ? '🎯 NHÀ TUYỂN DỤNG' : '💻 THÀNH VIÊN'),
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+        welcomeHeading: `Chào mừng ${email}!`,
+        welcomeDesc: `Tài khoản đăng nhập với quyền ${r}.`
+      };
+    }
+  }
+
+  // Kết nối API login của FastAPI nếu Backend đang bật
+  if (state.isApiConnected) {
+    try {
+      let data;
+      try {
+        data = await apiFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+      } catch (jsonErr) {
+        const formBody = new URLSearchParams();
+        formBody.append('username', email);
+        formBody.append('password', password);
+        data = await apiFetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody.toString()
+        });
+      }
+
+      const token = data.access_token || data.token || data.data?.access_token;
+      if (token) {
+        state.token = token;
+        localStorage.setItem('access_token', token);
+      }
+    } catch (e) {
+      console.warn('Backend login fallback to local session:', e.message);
+    }
+  }
+
+  state.currentUser = matchedUser;
+  localStorage.setItem('auth_user_email', matchedUser.email);
+  localStorage.setItem('auth_user_data', JSON.stringify(matchedUser));
+
+  updateUserUI();
+  switchScreen('dashboard');
+  alert(`Đăng nhập thành công!\n\n• Người dùng: ${matchedUser.full_name}\n• Vai trò hệ thống: ${matchedUser.roleTitle || matchedUser.role}\n• Email: ${matchedUser.email}`);
+}
+
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('register-name')?.value?.trim();
+  const email = document.getElementById('register-email')?.value?.trim();
+  const password = document.getElementById('register-password')?.value;
+  const role = (document.getElementById('register-role')?.value || 'USER').toUpperCase();
+
+  if (!email || !password || !name) {
+    alert('Vui lòng điền đầy đủ các thông tin bắt buộc!');
     return;
   }
 
-  try {
-    let data;
+  if (state.isApiConnected) {
     try {
-      data = await apiFetch('/auth/login', {
+      await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({
+          full_name: name,
+          email: email,
+          password: password,
+          role: role.toLowerCase()
+        })
       });
-    } catch (jsonErr) {
-      const formBody = new URLSearchParams();
-      formBody.append('username', email);
-      formBody.append('password', password);
-      data = await apiFetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formBody.toString()
-      });
+      alert(`Đăng ký tài khoản "${email}" (${role}) thành công qua API Backend! Bạn có thể đăng nhập ngay.`);
+      switchAuthTab('login');
+      const loginEmail = document.getElementById('login-email');
+      const loginPwd = document.getElementById('login-password');
+      if (loginEmail) loginEmail.value = email;
+      if (loginPwd) loginPwd.value = password;
+      return;
+    } catch (err) {
+      alert(`Lỗi đăng ký qua Backend: ${err.message}`);
     }
-
-    const token = data.access_token || data.token || data.data?.access_token;
-    if (!token) throw new Error('Không nhận được access_token từ server');
-
-    state.token = token;
-    localStorage.setItem('access_token', token);
-    await syncAllBackendData();
-    alert('Đăng nhập thành công & đã đồng bộ dữ liệu từ FastAPI!');
-    switchScreen('dashboard');
-  } catch (err) {
-    alert(`Đăng nhập thất bại: ${err.message}`);
   }
+
+  // Local demo fallback
+  const newAccount = {
+    id: Date.now(),
+    full_name: name,
+    email: email,
+    role: role,
+    roleTitle: role === 'ADMIN' ? '👑 TRƯỞNG NHÓM (ADMIN)' : (role === 'MANAGER' ? '🎯 NHÀ TUYỂN DỤNG' : '💻 THÀNH VIÊN'),
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    welcomeHeading: `Chào mừng ${name}!`,
+    welcomeDesc: `Bạn đã đăng nhập với vai trò ${role}.`
+  };
+  TEAM_ACCOUNTS[email] = newAccount;
+  state.usersList.push(newAccount);
+  alert(`Đăng ký tài khoản "${name}" (${role}) thành công!`);
+  switchAuthTab('login');
+  const loginEmail = document.getElementById('login-email');
+  const loginPwd = document.getElementById('login-password');
+  if (loginEmail) loginEmail.value = email;
+  if (loginPwd) loginPwd.value = password;
+}
+
+function handleLogout() {
+  if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi phiên làm việc hiện tại?')) return;
+  state.token = null;
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('auth_user_email');
+  localStorage.removeItem('auth_user_data');
+  state.currentUser = null;
+  updateUserUI();
+  switchScreen('auth');
+  alert('Đã đăng xuất! Hãy chọn tài khoản thành viên khác để kiểm thử phân quyền RBAC.');
 }
 
 async function fetchCurrentUserProfile() {
@@ -296,13 +465,13 @@ async function fetchCurrentUserProfile() {
       profile = await apiFetch('/users/me');
     }
     const userData = profile.data || profile;
-    if (userData && userData.email) {
+    if (userData && userData.email && state.currentUser) {
       state.currentUser = {
         ...state.currentUser,
         id: userData.id ?? state.currentUser.id,
         full_name: userData.full_name || userData.name || state.currentUser.full_name,
         email: userData.email,
-        role: (userData.role || 'USER').toUpperCase()
+        role: (userData.role || state.currentUser.role || 'USER').toUpperCase()
       };
       updateUserUI();
     }
@@ -312,21 +481,77 @@ async function fetchCurrentUserProfile() {
 }
 
 function updateUserUI() {
-  const headerName = document.querySelector('header button[onclick="switchScreen(\'profile\')"] .text-slate-200');
-  const headerRole = document.querySelector('header button[onclick="switchScreen(\'profile\')"] .text-cyan-400');
-  const dashboardGreeting = document.querySelector('#screen-dashboard h1');
+  const headerSection = document.getElementById('header-user-section');
+  const headerAvatar = document.getElementById('header-user-avatar');
+  const headerName = document.getElementById('header-user-name');
+  const headerRole = document.getElementById('header-user-role');
+  const dashboardGreeting = document.getElementById('dashboard-user-greeting');
+  const dashboardDesc = document.getElementById('dashboard-user-desc');
+  const profileAvatar = document.getElementById('profile-avatar-img');
   const profileNameHeading = document.querySelector('#screen-profile h3');
   const profileEmailText = document.querySelector('#screen-profile p.font-mono');
+  const profileRoleBadge = document.querySelector('#screen-profile span.font-bold');
   const profileNameInput = document.querySelector('#screen-profile input[type="text"]');
   const profileEmailInput = document.querySelector('#screen-profile input[type="email"]');
+  const rbacWarning = document.getElementById('rbac-permission-warning');
+  const rbacWarningRoleName = document.getElementById('rbac-warning-role-name');
+  const addUserBtn = document.querySelector('#screen-users button[onclick*="openCreateUserModal"]');
 
-  if (headerName) headerName.innerText = state.currentUser.full_name;
-  if (headerRole) headerRole.innerText = state.currentUser.role;
-  if (dashboardGreeting) dashboardGreeting.innerText = `Chào mừng quay trở lại, ${state.currentUser.full_name}!`;
-  if (profileNameHeading) profileNameHeading.innerText = state.currentUser.full_name;
-  if (profileEmailText) profileEmailText.innerText = state.currentUser.email;
-  if (profileNameInput) profileNameInput.value = state.currentUser.full_name;
-  if (profileEmailInput) profileEmailInput.value = state.currentUser.email;
+  if (!state.currentUser) {
+    if (headerSection) headerSection.classList.add('hidden');
+    return;
+  }
+
+  if (headerSection) headerSection.classList.remove('hidden');
+  const user = state.currentUser;
+  const role = (user.role || 'USER').toUpperCase();
+  const isAdmin = role === 'ADMIN';
+
+  if (headerAvatar && user.avatar) headerAvatar.src = user.avatar;
+  if (headerName) headerName.innerText = user.full_name;
+  if (headerRole) {
+    headerRole.innerText = user.roleTitle || role;
+    headerRole.className = `text-[10px] font-mono font-medium ${isAdmin ? 'text-violet-400' : (role === 'MANAGER' ? 'text-cyan-400' : 'text-emerald-400')}`;
+  }
+
+  if (dashboardGreeting) {
+    dashboardGreeting.innerText = user.welcomeHeading || `Chào mừng quay trở lại, ${user.full_name}!`;
+  }
+  if (dashboardDesc) {
+    dashboardDesc.innerHTML = user.welcomeDesc || `Bạn đang đăng nhập với tài khoản <span class="text-white font-semibold">${user.email}</span> (Vai trò: <span class="text-cyan-400 font-semibold">${role}</span>).`;
+  }
+
+  if (profileAvatar && user.avatar) profileAvatar.src = user.avatar;
+  if (profileNameHeading) profileNameHeading.innerText = user.full_name;
+  if (profileEmailText) profileEmailText.innerText = user.email;
+  if (profileRoleBadge) {
+    profileRoleBadge.innerText = user.roleTitle || role;
+    profileRoleBadge.className = `inline-block mt-2 px-2.5 py-0.5 rounded-full font-bold text-[10px] ${isAdmin ? 'bg-violet-500/20 text-violet-300' : 'bg-cyan-500/20 text-cyan-300'}`;
+  }
+  if (profileNameInput) profileNameInput.value = user.full_name;
+  if (profileEmailInput) profileEmailInput.value = user.email;
+
+  // RBAC Access Control on Screen Users (Chỉ ADMIN mới có quyền Thêm User)
+  if (rbacWarning) {
+    if (isAdmin) {
+      rbacWarning.classList.add('hidden');
+    } else {
+      rbacWarning.classList.remove('hidden');
+      if (rbacWarningRoleName) rbacWarningRoleName.innerText = user.roleTitle || role;
+    }
+  }
+
+  if (addUserBtn) {
+    if (isAdmin) {
+      addUserBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+      addUserBtn.removeAttribute('disabled');
+      addUserBtn.title = "Thêm người dùng mới vào hệ thống";
+    } else {
+      addUserBtn.classList.add('opacity-40', 'cursor-not-allowed');
+      addUserBtn.setAttribute('disabled', 'true');
+      addUserBtn.title = "Chỉ Trưởng nhóm (ADMIN) mới có quyền thêm người dùng";
+    }
+  }
 }
 
 async function updateProfileOnBackend() {
@@ -628,6 +853,11 @@ async function fetchActivities() {
 }
 
 function switchScreen(screenId) {
+  if (!state.currentUser && screenId !== 'auth') {
+    alert('Vui lòng chọn hoặc đăng nhập tài khoản để vào hệ thống!');
+    screenId = 'auth';
+  }
+
   if (state.currentScreen === 'interview' && screenId !== 'interview') {
     if (state.activeInterview.timerInterval) {
       clearInterval(state.activeInterview.timerInterval);
@@ -1121,6 +1351,8 @@ async function openTaskDetailModalById(taskId) {
   if (modal) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    switchTaskModalTab('comments');
+    loadTaskAttachments(taskId);
   }
 
   if (state.isApiConnected && state.token) {
@@ -1218,14 +1450,12 @@ document.addEventListener('DOMContentLoaded', () => {
   renderKanbanCards();
   checkBackendConnection();
 
-  const loginForm = document.querySelector('#screen-auth form');
-  if (loginForm) {
-    loginForm.onsubmit = (e) => {
-      e.preventDefault();
-      const email = loginForm.querySelector('input[type="email"]')?.value?.trim();
-      const password = loginForm.querySelector('input[type="password"]')?.value;
-      handleLogin(email, password);
-    };
+  if (state.currentUser) {
+    updateUserUI();
+    switchScreen('dashboard');
+  } else {
+    updateUserUI();
+    switchScreen('auth');
   }
 
   const profileButtons = document.querySelectorAll('#screen-profile button');
@@ -1258,6 +1488,375 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (addTaskBtn) {
-    addTaskBtn.onclick = () => createNewTaskPrompt('TODO');
+    addTaskBtn.onclick = () => openCreateTaskModal('TODO');
   }
 });
+
+// ==========================================
+// FILE UPLOAD & CV HANDLERS
+// ==========================================
+function triggerCvUpload() {
+  const input = document.getElementById('cv-file-input');
+  if (input) input.click();
+}
+
+function handleCvFileSelect(input) {
+  if (input.files && input.files[0]) {
+    processCvFile(input.files[0]);
+  }
+}
+
+function handleCvDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dropzone = document.getElementById('cv-dropzone');
+  if (dropzone) {
+    dropzone.classList.add('border-brand-400', 'bg-brand-500/15', 'scale-[1.01]');
+  }
+}
+
+function handleCvDragLeave(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dropzone = document.getElementById('cv-dropzone');
+  if (dropzone) {
+    dropzone.classList.remove('border-brand-400', 'bg-brand-500/15', 'scale-[1.01]');
+  }
+}
+
+function handleCvDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dropzone = document.getElementById('cv-dropzone');
+  if (dropzone) {
+    dropzone.classList.remove('border-brand-400', 'bg-brand-500/15', 'scale-[1.01]');
+  }
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+    processCvFile(e.dataTransfer.files[0]);
+  }
+}
+
+function processCvFile(file) {
+  state.interviewConfig.cvFile = file;
+  
+  const promptEl = document.getElementById('cv-dropzone-prompt');
+  const cardEl = document.getElementById('cv-file-card');
+  const nameEl = document.getElementById('cv-file-name');
+  const sizeEl = document.getElementById('cv-file-size');
+  const statusEl = document.getElementById('cv-upload-status');
+  
+  if (promptEl) promptEl.classList.add('hidden');
+  if (cardEl) {
+    cardEl.classList.remove('hidden');
+    cardEl.classList.add('flex');
+  }
+  if (nameEl) nameEl.innerText = file.name;
+  if (sizeEl) sizeEl.innerText = formatFileSize(file.size);
+  if (statusEl) {
+    statusEl.innerHTML = `<span class="text-emerald-400 font-medium">✓ Đã nạp: ${file.name}</span>`;
+  }
+  
+  lucide.createIcons();
+}
+
+function removeCvFile() {
+  state.interviewConfig.cvFile = null;
+  const input = document.getElementById('cv-file-input');
+  if (input) input.value = '';
+  
+  const promptEl = document.getElementById('cv-dropzone-prompt');
+  const cardEl = document.getElementById('cv-file-card');
+  const statusEl = document.getElementById('cv-upload-status');
+  
+  if (cardEl) {
+    cardEl.classList.add('hidden');
+    cardEl.classList.remove('flex');
+  }
+  if (promptEl) promptEl.classList.remove('hidden');
+  if (statusEl) statusEl.innerText = 'Chưa chọn tệp';
+  
+  lucide.createIcons();
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ==========================================
+// AVATAR UPLOAD (PROFILE)
+// ==========================================
+function handleAvatarSelect(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const newAvatarUrl = e.target.result;
+      state.currentUser.avatar = newAvatarUrl;
+      
+      const profileImg = document.getElementById('profile-avatar-img');
+      if (profileImg) profileImg.src = newAvatarUrl;
+      
+      const headerImg = document.querySelector('header button[onclick="switchScreen(\'profile\')"] img');
+      if (headerImg) headerImg.src = newAvatarUrl;
+      
+      alert('Đã cập nhật ảnh đại diện từ máy tính thành công!');
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// ==========================================
+// TASK DETAIL MODAL TABS & ATTACHMENTS
+// ==========================================
+function switchTaskModalTab(tab) {
+  const commentsBtn = document.getElementById('task-tab-btn-comments');
+  const attachBtn = document.getElementById('task-tab-btn-attachments');
+  const commentsContent = document.getElementById('task-tab-content-comments');
+  const attachContent = document.getElementById('task-tab-content-attachments');
+  
+  if (tab === 'comments') {
+    if (commentsBtn) commentsBtn.className = "text-brand-400 border-b-2 border-brand-500 pb-2 -mb-2 flex items-center gap-1.5 transition-colors";
+    if (attachBtn) attachBtn.className = "text-slate-400 hover:text-white pb-2 -mb-2 flex items-center gap-1.5 transition-colors";
+    if (commentsContent) commentsContent.classList.remove('hidden');
+    if (attachContent) attachContent.classList.add('hidden');
+  } else {
+    if (attachBtn) attachBtn.className = "text-brand-400 border-b-2 border-brand-500 pb-2 -mb-2 flex items-center gap-1.5 transition-colors";
+    if (commentsBtn) commentsBtn.className = "text-slate-400 hover:text-white pb-2 -mb-2 flex items-center gap-1.5 transition-colors";
+    if (attachContent) attachContent.classList.remove('hidden');
+    if (commentsContent) commentsContent.classList.add('hidden');
+    loadTaskAttachments(state.selectedTaskId);
+  }
+  lucide.createIcons();
+}
+
+async function loadTaskAttachments(taskId) {
+  if (!taskId) return;
+  const list = document.getElementById('task-attachments-list');
+  const countEl = document.getElementById('task-modal-attachments-count');
+  if (!list) return;
+
+  if (state.isApiConnected && state.token) {
+    try {
+      const res = await apiFetch(`/tasks/${taskId}/attachments`);
+      const items = Array.isArray(res) ? res : (res.items || res.data || []);
+      if (countEl) countEl.innerText = items.length;
+      if (items.length > 0) {
+        list.innerHTML = items.map(att => `
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="font-bold text-white">${att.filename}</div>
+                <div class="text-[10px] text-slate-400">${formatFileSize(att.file_size || 1024*500)} • ID: #${att.id}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <a href="${state.apiBaseUrl}/attachments/${att.id}/download" target="_blank" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white" title="Tải xuống"><i data-lucide="download" class="w-3.5 h-3.5"></i></a>
+            </div>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      }
+    } catch (e) {
+      console.warn('Lỗi tải attachments:', e);
+    }
+  }
+}
+
+async function handleTaskAttachmentUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const taskId = state.selectedTaskId || 1;
+
+  if (state.isApiConnected && state.token) {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch(`${state.apiBaseUrl}/tasks/${taskId}/attachments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`
+        },
+        body: formData
+      });
+      if (response.ok) {
+        alert(`Tải tệp "${file.name}" lên công việc #${taskId} thành công!`);
+        await loadTaskAttachments(taskId);
+        input.value = '';
+        return;
+      }
+    } catch (e) {
+      console.warn('Upload API error:', e);
+    }
+  }
+
+  // Fallback demo upload
+  const list = document.getElementById('task-attachments-list');
+  const countEl = document.getElementById('task-modal-attachments-count');
+  if (list) {
+    const newItem = document.createElement('div');
+    newItem.className = "flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-brand-500/30";
+    newItem.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+          <i data-lucide="file-check" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <div class="font-bold text-white">${file.name}</div>
+          <div class="text-[10px] text-slate-400">${formatFileSize(file.size)} • Tải lên vừa xong</div>
+        </div>
+      </div>
+      <span class="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-500/20">Vừa đính kèm</span>
+    `;
+    list.prepend(newItem);
+    if (countEl) countEl.innerText = parseInt(countEl.innerText || '0') + 1;
+    lucide.createIcons();
+  }
+  alert(`Đã đính kèm tệp "${file.name}" từ máy tính vào công việc!`);
+  input.value = '';
+}
+
+// ==========================================
+// MODAL CREATE TASK
+// ==========================================
+function openCreateTaskModal(defaultStatus = 'TODO') {
+  const modal = document.getElementById('modal-create-task');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const titleInput = document.getElementById('new-task-title');
+    if (titleInput) titleInput.focus();
+  }
+}
+
+function closeCreateTaskModal() {
+  const modal = document.getElementById('modal-create-task');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function submitCreateTask(e) {
+  e.preventDefault();
+  const title = document.getElementById('new-task-title').value.trim();
+  const desc = document.getElementById('new-task-desc').value.trim();
+  const priority = document.getElementById('new-task-priority').value;
+  const assignee = document.getElementById('new-task-assignee').value;
+
+  const newTask = {
+    id: Date.now(),
+    code: `TASK-${String(state.tasks.length + 1).padStart(2, '0')}`,
+    title: title,
+    description: desc,
+    status: 'TODO',
+    priority: priority,
+    assignee: assignee,
+    due_date: '30/11/2026',
+    comments_count: 0
+  };
+
+  if (state.isApiConnected && state.token && state.activeProjectId) {
+    try {
+      await apiFetch(`/projects/${state.activeProjectId}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify({
+          title: title,
+          description: desc,
+          priority: priority,
+          status: 'TODO'
+        })
+      });
+      await fetchTasksForProject(state.activeProjectId);
+      closeCreateTaskModal();
+      alert(`Đã tạo công việc "${title}" trên backend thành công!`);
+      document.getElementById('new-task-title').value = '';
+      document.getElementById('new-task-desc').value = '';
+      return;
+    } catch (err) {
+      console.warn('Lỗi API tạo task:', err);
+    }
+  }
+
+  // Local fallback
+  state.tasks.unshift(newTask);
+  renderKanbanCards();
+  closeCreateTaskModal();
+  alert(`Đã tạo công việc mới "${title}" thành công!`);
+  document.getElementById('new-task-title').value = '';
+  document.getElementById('new-task-desc').value = '';
+}
+
+// ==========================================
+// MODAL CREATE USER (RBAC)
+// ==========================================
+function openCreateUserModal() {
+  const modal = document.getElementById('modal-create-user');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const nameInput = document.getElementById('new-user-name');
+    if (nameInput) nameInput.focus();
+  }
+}
+
+function closeCreateUserModal() {
+  const modal = document.getElementById('modal-create-user');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function submitCreateUser(e) {
+  e.preventDefault();
+  const name = document.getElementById('new-user-name').value.trim();
+  const email = document.getElementById('new-user-email').value.trim();
+  const pwd = document.getElementById('new-user-pwd').value.trim();
+  const role = document.getElementById('new-user-role').value;
+
+  if (state.isApiConnected) {
+    try {
+      await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          full_name: name,
+          email: email,
+          password: pwd,
+          role: role.toLowerCase()
+        })
+      });
+      await fetchUsersList();
+      closeCreateUserModal();
+      alert(`Đã tạo tài khoản "${email}" (${role}) thành công qua API Backend!`);
+      document.getElementById('new-user-name').value = '';
+      document.getElementById('new-user-email').value = '';
+      document.getElementById('new-user-pwd').value = '';
+      return;
+    } catch (err) {
+      alert(`Lỗi đăng ký: ${err.message}`);
+      return;
+    }
+  }
+
+  // Local fallback
+  const newUser = {
+    id: (state.usersList.length || 3) + 1,
+    full_name: name,
+    email: email,
+    role: role
+  };
+  state.usersList.push(newUser);
+  renderUsersTable(state.usersList);
+  closeCreateUserModal();
+  alert(`Đã thêm người dùng mới "${name}" (${email}) vào danh sách!`);
+  document.getElementById('new-user-name').value = '';
+  document.getElementById('new-user-email').value = '';
+  document.getElementById('new-user-pwd').value = '';
+}

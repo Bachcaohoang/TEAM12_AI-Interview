@@ -1,5 +1,12 @@
 # HỆ THỐNG AI INTERVIEW & QUẢN LÝ DỰ ÁN (TEAM 12)
 
+### Thành viên dự án:
+1. **Cao Hoàng Bách** - Trưởng nhóm (Team Leader / Admin)
+2. **Trần Quốc Việt** - Nhà tuyển dụng & Đánh giá phỏng vấn (Recruiter / Lead Interviewer)
+3. **Nguyễn Trọng Nhân** - Kỹ sư hệ thống & Phát triển (Software Engineer / Member)
+
+---
+
 Dự án được phân chia cấu trúc rõ ràng thành 2 phân hệ độc lập: **Backend API** và **Frontend UI / Figma Design**.
 
 ```

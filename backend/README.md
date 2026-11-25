@@ -1,6 +1,11 @@
-# Hệ thống Quản lý Dự án & Phỏng vấn AI (Backend API)
+# Hệ thống Quản lý Dự án & Phỏng vấn AI (Backend API) - Nhóm 12
 
-Bộ backend hoàn chỉnh được xây dựng bằng **FastAPI**, **SQLAlchemy 2.0**, **Pydantic v2** và **JWT Authentication (OAuth2)**.
+### Danh sách thành viên:
+- **Cao Hoàng Bách** - Trưởng nhóm (Leader / Admin)
+- **Trần Quốc Việt** - Nhà tuyển dụng / Phỏng vấn viên (Recruiter / Lead Interviewer)
+- **Nguyễn Trọng Nhân** - Kỹ sư phát triển hệ thống (Developer / Member)
+
+---
 
 ---
 

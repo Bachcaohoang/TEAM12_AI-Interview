@@ -33,22 +33,22 @@ def seed_data() -> None:
         print("🚀 Đang khởi tạo dữ liệu mẫu...")
 
         admin = User(
-            email="admin@gmail.com",
-            full_name="Quản trị viên (Admin)",
+            email="bach.cao@gmail.com",
+            full_name="Cao Hoàng Bách (Trưởng nhóm)",
             hashed_password=hash_password("admin123"),
             role="ADMIN",
             is_active=True,
         )
         user1 = User(
             email="viet.tran@gmail.com",
-            full_name="Trần Nguyễn Quốc Việt",
+            full_name="Trần Quốc Việt (Nhà tuyển dụng / Interviewer)",
             hashed_password=hash_password("user123"),
-            role="USER",
+            role="MANAGER",
             is_active=True,
         )
         user2 = User(
-            email="dev.member@gmail.com",
-            full_name="Lập trình viên mẫu",
+            email="nhan.nguyen@gmail.com",
+            full_name="Nguyễn Trọng Nhân (Thành viên)",
             hashed_password=hash_password("user123"),
             role="USER",
             is_active=True,
