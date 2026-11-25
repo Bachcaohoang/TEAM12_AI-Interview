@@ -3,6 +3,7 @@
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.dependencies.get_db import get_db
 import app.models  # noqa: F401  # Đăng ký metadata cho create_all
@@ -119,3 +120,12 @@ def check_db_connection(db: Session = Depends(get_db)) -> dict[str, str]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi kết nối cơ sở dữ liệu: {str(e)}",
         )
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
